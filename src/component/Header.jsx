@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-
+// import logoHeader from "../assets/logoHeader.png";
 
 export default function Header({ onLoginClick, onRegisterClick }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,7 +18,7 @@ export default function Header({ onLoginClick, onRegisterClick }) {
       ${scrolled ? "backdrop-blur-md bg-[#063040] shadow-md w-[95%]" : "bg-transparent w-[90%]"}`}
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <img src={logoHeader} alt="logo" className="hidden lg:w-28 lg:h-16" />
+        {/* <img src={logoHeader} alt="logo" className="hidden lg:w-28 lg:h-16" /> */}
 
         {/* Desktop Menu */}
         <nav className="hidden md:flex space-x-6 font-medium text-white">
