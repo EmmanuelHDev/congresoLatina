@@ -61,14 +61,14 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
             </div>
           </div>
         </section>
-        <section className="bg-[#f0f7f6] py-16 px-6 text-center">
+        {/* <section className="bg-[#f0f7f6] py-16 px-6 text-center">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">
           Objetivo del Congreso
         </h2>
         <p className="text-lg text-[#063040] max-w-3xl mx-auto leading-relaxed">
           Fomentar un espacio de encuentro académico y científico que permita analizar los principales desafíos contemporáneos de la medicina, compartir los descubrimientos más recientes y explorar las nuevas fronteras del conocimiento médico, promoviendo la actualización profesional, el pensamiento crítico y la colaboración interdisciplinaria para enfrentar con eficacia las transformaciones del entorno sanitario global.
         </p>
-      </section>
+        </section> */}
       </div>
     </div>
   );
