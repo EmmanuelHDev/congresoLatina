@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import logoHeader from "../assets/logoHeader.png";
+
 
 export default function Header({ onLoginClick, onRegisterClick }) {
   const [menuOpen, setMenuOpen] = useState(false);
