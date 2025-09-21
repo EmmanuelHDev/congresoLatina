@@ -2,7 +2,7 @@ import { useState } from "react";
 import { supabase } from "./lib/cliente"; // importa tu cliente supabase
 import Popup from "./component/NotificarDobleUsuario";
 export default function RegisterPage({ onBack }) {
-  const [showPopup, setShowPopup] = useState(false);
+    const [showPopup, setShowPopup] = useState(false);
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
@@ -10,6 +10,7 @@ export default function RegisterPage({ onBack }) {
     semestre_actual: "",
     universidad: "",
     seleccion_participacion: "",
+    paquete: "", 
     telefono: "",
     correo: ""
   });
@@ -25,50 +26,63 @@ export default function RegisterPage({ onBack }) {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setMensaje("");
+    e.preventDefault();
+    setLoading(true);
+    setMensaje("");
 
-  // Normalizar la cédula
-  const cedulaNormalizada = formData.cedula
-    .trim()
-    .replace(/[\u2013\u2014]/g, "-"); // en-dash y em-dash -> "-"
+    // Normalizar cédula
+    const cedulaNormalizada = formData.cedula.trim().replace(/[\u2013\u2014]/g, "-");
 
-  // Crear copia del formData con la cédula corregida
-  const datosLimpios = {
-    ...formData,
-    cedula: cedulaNormalizada,
-  };
+    try {
+      // 1. Crear usuario en Supabase Auth
+      const { data: authUser, error: authError } = await supabase.auth.signUp({
+        email: formData.correo,
+        password: cedulaNormalizada, // 👈 cédula como password inicial
+      });
 
-  const { error } = await supabase
-    .from("usuarios_congreso")
-    .insert([datosLimpios]);
+      if (authError) {
+        console.error("Auth error:", authError.message);
+        setMensaje("❌ Error al crear la cuenta: " + authError.message);
+        setLoading(false);
+        return;
+      }
 
-  if (error) {
-    console.error(error);
+      // 2. Insertar datos en tu tabla vinculando auth_id
+      const { error: dbError } = await supabase.from("usuarios_congreso").insert([{
+        ...formData,
+        cedula: cedulaNormalizada,
+        auth_id: authUser.user.id, // 👈 guardamos referencia
+        rol: "participante",
+      }]);
 
-    if (error.code === "23505") {
-      setShowPopup(true);
-    } else {
-      setMensaje("❌ Error al registrar la inscripción.");
+      if (dbError) {
+        console.error("DB error:", dbError.message);
+        if (dbError.code === "23505") {
+          setShowPopup(true);
+        } else {
+          setMensaje("❌ Error al registrar la inscripción.");
+        }
+      } else {
+        setMensaje("✅ Inscripción enviada correctamente.");
+        setFormData({
+          nombre: "",
+          apellido: "",
+          cedula: "",
+          semestre_actual: "",
+          universidad: "",
+          seleccion_participacion: "",
+          telefono: "",
+          paquete: "", 
+          correo: ""
+        });
+      }
+    } catch (err) {
+      console.error("Error general:", err.message);
+      setMensaje("❌ Error inesperado.");
     }
-  } else {
-    setMensaje("✅ Inscripción enviada correctamente.");
-    setFormData({
-      nombre: "",
-      apellido: "",
-      cedula: "",
-      semestre_actual: "",
-      universidad: "",
-      seleccion_participacion: "",
-      telefono: "",
-      correo: ""
-    });
-  }
 
-  setLoading(false);
-};
-
+    setLoading(false);
+  };
 
 
 
@@ -152,25 +166,82 @@ export default function RegisterPage({ onBack }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Semestre actual</label>
-              <input
+              <select
                 name="semestre_actual"
                 value={formData.semestre_actual}
                 onChange={handleChange}
-                type="text"
                 className="w-full border rounded-lg px-3 py-2"
-              />
+              >
+                <option value="">Seleccione el semestre</option>
+                <option value="I">I (Primero)</option>
+                <option value="II">II (Segundo)</option>
+                <option value="III">III (Tercero)</option>
+                <option value="IV">IV (Cuarto)</option>
+                <option value="V">V (Quinto)</option>
+                <option value="VI">VI (Sexto)</option>
+                <option value="VII">VII (Séptimo)</option>
+                <option value="VIII">VIII (Octavo)</option>
+                <option value="IX">IX (Noveno)</option>
+                <option value="X">X (Décimo)</option>
+                <option value="XI">XI (Undécimo)</option>
+                <option value="XII">XII (Duodécimo)</option>
+              </select>
             </div>
+            {/* Universidad */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Universidad</label>
-              <input
+              <select
                 name="universidad"
                 value={formData.universidad}
                 onChange={handleChange}
-                type="text"
                 className="w-full border rounded-lg px-3 py-2"
-              />
+              >
+                <option value="">Seleccione una universidad</option>
+                <option value="universidad-latina-santiago">Universidad Latina - Santiago</option>
+                <option value="universidad-latina-chiriqui">Universidad Latina - Chiriquí</option>
+                <option value="universidad-latina-panama">Universidad Latina - Panamá</option>
+                <option value="columbus-university">Columbus University</option>
+                <option value="uip">UIP</option>
+                <option value="otra">Otra Universidad</option>
+              </select>
             </div>
+
+            {/* Input adicional si selecciona "Otra Universidad" */}
+            {formData.universidad === "otra" && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ¿De qué universidad asistirás?
+                </label>
+                <input
+                  type="text"
+                  name="otra_universidad"
+                  value={formData.otra_universidad || ""}
+                  onChange={handleChange}
+                  placeholder="Escriba el nombre de su universidad"
+                  className="w-full border rounded-lg px-3 py-2"
+                />
+              </div>
+            )}
+
           </div>
+          {/* Paquete */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Paquete
+          </label>
+          <select
+            name="paquete"
+            value={formData.paquete || ""}
+            onChange={handleChange}
+            className="w-full border rounded-lg px-3 py-2"
+            required
+          >
+            <option value="">Selecciona un paquete</option>
+            <option value="solo-congreso">Solo Congreso</option>
+            <option value="solo-decameron">Solo Decameron</option>
+            <option value="congreso-decameron">Congreso + Decameron</option>
+          </select>
+        </div>
 
           {/* Selección de participación */}
           <div className="mb-6">
@@ -187,7 +258,6 @@ export default function RegisterPage({ onBack }) {
               <option value="">Selecciona una opción</option>
               <option value="ponente">Ponente</option>
               <option value="asistente">Asistente</option>
-              <option value="voluntario">Voluntario</option>
             </select>
           </div>
 
