@@ -21,7 +21,7 @@ export default function Header({ onLoginClick, onRegisterClick }) {
         {/* <img src={logoHeader} alt="logo" className="hidden lg:w-28 lg:h-16" /> */}
 
         {/* Desktop Menu */}
-        <nav className="hidden md:flex space-x-6 font-medium text-white">
+        <nav className="hidden lg:flex space-x-6 font-medium text-white">
           <a href="#inicio" className="hover:text-yellow-400">Inicio</a>
           <a href="#sobre" className="hover:text-yellow-400">Sobre el Congreso</a>
           <a href="#ponentes" className="hover:text-yellow-400">Ponentes</a>
@@ -31,16 +31,16 @@ export default function Header({ onLoginClick, onRegisterClick }) {
         </nav>
 
         {/* Botones Desktop */}
-        <div className="hidden md:flex space-x-4">
+        <div className="hidden lg:flex space-x-4">
           <button
             onClick={onLoginClick}
-            className="px-4 py-2 bg-[#063040] border border-white text-white rounded-md text-sm hover:bg-[#ffca27]"
+            className="px-4 py-2 bg-[#063040] border border-white text-white rounded-md text-sm hover:bg-[#ffca27] cursor-pointer"
           >
             Iniciar Sesión
           </button>
           <button
             onClick={onRegisterClick}
-            className="px-4 py-2 bg-teal-800 text-white rounded-md hover:bg-teal-700 text-sm"
+            className="px-4 py-2 bg-teal-800 text-white rounded-md hover:bg-teal-700 text-sm cursor-pointer"
           >
             Registrarse
           </button>
@@ -48,7 +48,7 @@ export default function Header({ onLoginClick, onRegisterClick }) {
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden text-white ml-auto"
+          className="lg:hidden text-white ml-auto"
           onClick={() => setMenuOpen(!menuOpen)}
         >
           {menuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -57,7 +57,7 @@ export default function Header({ onLoginClick, onRegisterClick }) {
 
       {/* Mobile Menu */}
       <div
-        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out rounded-b-2xl
+        className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out rounded-b-2xl
         ${menuOpen ? "max-h-96 opacity-100 bg-[#063040] text-white" : "max-h-0 opacity-0"}`}
       >
         <div className="p-4 space-y-3">

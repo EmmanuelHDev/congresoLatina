@@ -2,10 +2,18 @@ import { useState } from "react";
 import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
 import RegisterPage from "./RegisterPage";
+import PanelUsuario from "./PanelUsuario";
+import AdminInscripciones from "./AdminInscripciones";
 
 export default function App() {
-  const [view, setView] = useState("landing"); 
-  // valores posibles: "landing", "login", "register"
+  const [view, setView] = useState("landing");
+  const [usuario, setUsuario] = useState(null);
+
+  const handleLogout = () => {
+    setUsuario(null); // limpiar datos del usuario
+    setView("landing");
+    window.scrollTo(0, 0); // regresar al inicio
+  };
 
   return (
     <>
@@ -15,8 +23,30 @@ export default function App() {
           onRegisterClick={() => setView("register")}
         />
       )}
-      {view === "login" && <LoginPage onBack={() => setView("landing")} />}
+
+      {view === "login" && (
+        <LoginPage
+          onBack={() => setView("landing")}
+          onLoginSuccess={(data) => {
+            setUsuario(data);
+            setView("panel");
+          }}
+        />
+      )}
+
       {view === "register" && <RegisterPage onBack={() => setView("landing")} />}
+
+      {view === "panel" && (
+        <PanelUsuario
+          usuario={usuario}
+          onLogout={handleLogout}
+          onAdminClick={() => setView("admin")} // 👈 ir a admin
+        />
+      )}
+
+      {view === "admin" && (
+        <AdminInscripciones onBack={() => setView("panel")} /> // 👈 volver al panel
+      )}
     </>
   );
 }

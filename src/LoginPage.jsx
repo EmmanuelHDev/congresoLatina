@@ -21,15 +21,13 @@ export default function LoginPage({ onBack, onLoginSuccess }) {
     .trim()
     .replace(/[\u2013\u2014]/g, "-"); // convierte en-dash y em-dash a guion normal
 
-  console.log("Cédula enviada normalizada:", cedulaLimpia);
+  
 
   const { data, error } = await supabase
     .from("usuarios_congreso")
     .select("*")
     .eq('cedula', cedulaLimpia)
     .maybeSingle(); // devuelve null si no encuentra nada
-
-  console.log("Resultado:", { data, error });
 
   if (error) {
     console.error(error);
@@ -113,7 +111,7 @@ export default function LoginPage({ onBack, onLoginSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-teal-800 text-white rounded-lg hover:bg-teal-700 mb-4"
+            className="cursor-pointer w-full py-3 bg-teal-800 text-white rounded-lg hover:bg-teal-700 mb-4"
           >
             {loading ? "Ingresando..." : "Iniciar Sesión"}
           </button>
