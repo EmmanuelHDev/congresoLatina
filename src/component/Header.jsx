@@ -34,7 +34,7 @@ export default function Header({ onLoginClick, onRegisterClick }) {
         <div className="hidden lg:flex space-x-4">
           <button
             onClick={onLoginClick}
-            className="px-4 py-2 bg-[#063040] border border-white text-white rounded-md text-sm hover:bg-[#ffca27] cursor-pointer"
+            className="px-4 py-2 bg-[#063040] text-white rounded-md text-sm hover:bg-[#04222e] cursor-pointer"
           >
             Iniciar Sesión
           </button>

@@ -9,6 +9,7 @@ export default function RegisterPage({ onBack }) {
     cedula: "",
     semestre_actual: "",
     universidad: "",
+    otra_universidad: "",
     seleccion_participacion: "",
     paquete: "", 
     telefono: "",
@@ -70,6 +71,7 @@ export default function RegisterPage({ onBack }) {
           cedula: "",
           semestre_actual: "",
           universidad: "",
+          otra_universidad: "",
           seleccion_participacion: "",
           telefono: "",
           paquete: "", 
@@ -256,8 +258,8 @@ export default function RegisterPage({ onBack }) {
               required
             >
               <option value="">Selecciona una opción</option>
-              <option value="ponente">Ponente</option>
-              <option value="asistente">Asistente</option>
+              <option value="Miembro">Miembro</option>
+              <option value="Participante">Participante</option>
             </select>
           </div>
 

@@ -1,10 +1,38 @@
 import React, { useState } from "react";
-import HeaderAdmin from "./component/HeaderAdmin";
-export default function AdminInscripciones({ onBack }) {
-  const [filtroPaquete, setFiltroPaquete] = useState("Todos");
-  const [filtroCuotas, setFiltroCuotas] = useState("Todas");
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "./components/ui/card";
+import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/badge";
+import { Input } from "./components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/ui/table";
+import {
+  Search,
+  Filter,
+  Download,
+  Eye,
+  Users,
+  TrendingUp,
+  FileText,
+  Settings,
+} from "lucide-react";
 
-  // 🔹 Datos de ejemplo (esto luego lo conectas a tu base con Supabase)
+export default function AdminInscripciones({ onBack }) {
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroPaquete, setFiltroPaquete] = useState("Todos");
+  const [filtroEstado, setFiltroEstado] = useState("Todos");
+
+  // 🔹 Datos de ejemplo (esto luego lo conectas con Supabase)
   const participantes = [
     {
       id: 1,
@@ -62,175 +90,247 @@ export default function AdminInscripciones({ onBack }) {
     },
   ];
 
-  // 🔹 Filtro básico
+  // 🔹 Lógica de filtros
   const participantesFiltrados = participantes.filter((p) => {
-    return (
-      (filtroPaquete === "Todos" || p.paquete === filtroPaquete) &&
-      (filtroCuotas === "Todas" || p.cuotas.toString() === filtroCuotas)
-    );
+    const coincideBusqueda =
+      p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.correo.toLowerCase().includes(busqueda.toLowerCase());
+    const coincidePaquete =
+      filtroPaquete === "Todos" || p.paquete === filtroPaquete;
+    const coincideEstado =
+      filtroEstado === "Todos" || p.estado === filtroEstado;
+    return coincideBusqueda && coincidePaquete && coincideEstado;
   });
 
-  const getEstadoClass = (estado) => {
+  const totalParticipantes = participantes.length;
+  const participantesActivos = participantes.filter(
+    (p) => p.estado === "Activo"
+  ).length;
+  const porcentajeActivos = Math.round(
+    (participantesActivos / totalParticipantes) * 100
+  );
+
+  const getEstadoBadge = (estado) => {
     switch (estado) {
       case "Activo":
-        return "bg-green-100 text-green-700 px-2 py-1 rounded text-xs";
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+            Activo
+          </Badge>
+        );
       case "Pendiente":
-        return "bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs";
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+            Pendiente
+          </Badge>
+        );
       case "Cancelado":
-        return "bg-red-100 text-red-700 px-2 py-1 rounded text-xs";
+        return (
+          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+            Cancelado
+          </Badge>
+        );
       default:
-        return "bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs";
+        return <Badge>{estado}</Badge>;
+    }
+  };
+
+  const getPaqueteBadge = (paquete) => {
+    switch (paquete) {
+      case "Premium":
+        return (
+          <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+            Premium
+          </Badge>
+        );
+      case "Estándar":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+            Estándar
+          </Badge>
+        );
+      case "Básico":
+        return (
+          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+            Básico
+          </Badge>
+        );
+      default:
+        return <Badge>{paquete}</Badge>;
     }
   };
 
   return (
-    <div className="">
-      <HeaderAdmin stats={{ participantes: 156, activos: 89 }} />
-      {/* Filtros */}
-      <div className="px-4 flex flex-col sm:flex-row gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Buscar por nombre o correo..."
-          className="border px-3 py-2 rounded w-full sm:w-1/3"
-        />
-        <select
-          value={filtroPaquete}
-          onChange={(e) => setFiltroPaquete(e.target.value)}
-          className="border px-3 py-2 rounded w-full sm:w-1/4"
-        >
-          <option>Todos</option>
-          <option>Básico</option>
-          <option>Estándar</option>
-          <option>Premium</option>
-        </select>
-        <select
-          value={filtroCuotas}
-          onChange={(e) => setFiltroCuotas(e.target.value)}
-          className="border px-3 py-2 rounded w-full sm:w-1/4"
-        >
-          <option>Todas</option>
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
-          <option>4</option>
-          <option>6</option>
-        </select>
-        <button className="cursor-pointer bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="m2.859 2.877l12.57-1.795a.5.5 0 0 1 .571.494v20.848a.5.5 0 0 1-.57.494L2.858 21.123a1 1 0 0 1-.859-.99V3.867a1 1 0 0 1 .859-.99M4 4.735v14.53l10 1.429V3.306zM17 19h3V5h-3V3h4a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-4zm-6.8-7l2.8 4h-2.4L9 13.714L7.4 16H5l2.8-4L5 8h2.4L9 10.286L10.6 8H13z"/></svg>
-          Descargar
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      {/* 🔹 Header */}
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-8 px-6 mb-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Settings className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-semibold">Panel de Administración</h1>
+              <p className="text-emerald-100">Gestión de Inscripciones</p>
+              <p className="text-sm text-emerald-200">
+                Administra participantes, pagos y cuotas del sistema
+              </p>
+            </div>
+          </div>
+
+          {/* 🔹 Estadísticas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="bg-white/10 border-white/20 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-emerald-100 text-sm">Total Participantes</p>
+                    <p className="text-3xl font-semibold">{totalParticipantes}</p>
+                  </div>
+                  <Users className="w-8 h-8 text-emerald-200" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 border-white/20 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-emerald-100 text-sm">
+                      Participantes Activos
+                    </p>
+                    <p className="text-3xl font-semibold">{participantesActivos}</p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-emerald-200" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 border-white/20 text-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-emerald-100 text-sm">Porcentaje Activos</p>
+                    <p className="text-3xl font-semibold">{porcentajeActivos}%</p>
+                  </div>
+                  <FileText className="w-8 h-8 text-emerald-200" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
 
-      {/* Tabla */}
-      <div className="px-4 overflow-x-auto bg-white rounded shadow">
-        <table className="w-full border-collapse">
-          <thead className="bg-gray-100 text-left">
-          <tr>
-            <th className="p-3">
-              <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                  <g fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <circle cx="12" cy="6" r="4"/>
-                    <path strokeLinecap="round" d="M19.998 18q.002-.246.002-.5c0-2.485-3.582-4.5-8-4.5s-8 2.015-8 4.5S4 22 12 22c2.231 0 3.84-.157 5-.437"/>
-                  </g>
-                </svg>
-                Nombre Completo
+      <div className="max-w-7xl mx-auto px-6 pb-12">
+        {/* 🔹 Filtros */}
+        <Card className="shadow-lg border-0 mb-8">
+          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
+            <CardTitle className="flex items-center justify-between">
+              <span>Filtros de Búsqueda</span>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="w-4 h-4" />
+                Descargar
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Buscar por nombre o correo..."
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-            </th>
 
-            <th className="p-3">
-              <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M20 18h-2V9.25L12 13L6 9.25V18H4V6h1.2l6.8 4.25L18.8 6H20m0-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/>
-                </svg>
-                Correo Electrónico
-              </div>
-            </th>
+              <select
+                value={filtroPaquete}
+                onChange={(e) => setFiltroPaquete(e.target.value)}
+                className="border px-3 py-2 rounded"
+              >
+                <option value="Todos">Todos los paquetes</option>
+                <option value="Premium">Premium</option>
+                <option value="Estándar">Estándar</option>
+                <option value="Básico">Básico</option>
+              </select>
 
-            <th className="p-3">
-              <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M7 7v10h10V7H7m0-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2"/>
-                </svg>
-                Paquete
-              </div>
-            </th>
+              <select
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                className="border px-3 py-2 rounded"
+              >
+                <option value="Todos">Todos los estados</option>
+                <option value="Activo">Activo</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Cancelado">Cancelado</option>
+              </select>
 
-            <th className="p-3">
-              <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M3 4h18v2H3zm0 7h18v2H3zm0 7h18v2H3z"/>
-                </svg>
-                Cuotas
-              </div>
-            </th>
+              <Button variant="outline" className="gap-2">
+                <Filter className="w-4 h-4" />
+                Limpiar Filtros
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-            <th className="p-3">Estado</th>
-
-            <th className="p-3">
-              <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 16H5V10h14z"/>
-                </svg>
-                Fecha de Registro
-              </div>
-            </th>
-
-            <th className="p-3">
-              <div className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2M4 18V8h16v10z"/>
-                </svg>
-                Comprobante
-              </div>
-            </th>
-          </tr>
-        </thead>
-
-          <tbody>
-            {participantesFiltrados.map((p) => (
-              <tr key={p.id} className="border-t hover:bg-gray-50">
-                {/* Nombre con avatar */}
-                <td className="p-3">
-                  <div className="flex items-center gap-3">
-                    {/* Círculo con inicial */}
-                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-green-600 text-white font-semibold">
-                      {p.nombre.charAt(0)}
-                    </div>
-                    <span>{p.nombre}</span>
-                  </div>
-                </td>
-
-                <td className="p-3 text-gray-600">{p.correo}</td>
-                <td className="p-3">
-                  <span className="bg-gray-100 px-2 py-1 rounded text-sm">{p.paquete}</span>
-                </td>
-                <td className="p-3">{p.cuotas}</td>
-                <td className="p-3">
-                  <span className={getEstadoClass(p.estado)}>{p.estado}</span>
-                </td>
-                <td className="p-3">{p.fecha}</td>
-                <td className="p-3">
-                  <button className="cursor-pointer text-green-600 hover:text-green-800 flex justify-center items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        fill="currentColor"
-                        d="M12 3c5.392 0 9.878 3.88 10.819 9c-.94 5.12-5.427 9-10.819 9s-9.878-3.88-10.818-9C2.122 6.88 6.608 3 12 3m0 16a9.005 9.005 0 0 0 8.778-7a9.005 9.005 0 0 0-17.555 0A9.005 9.005 0 0 0 12 19m0-2.5a4.5 4.5 0 1 1 0-9a4.5 4.5 0 0 1 0 9m0-2a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5"
-                      />
-                    </svg>{" "}
-                    Ver
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-
-        </table>
+        {/* 🔹 Tabla */}
+        <Card className="shadow-lg border-0">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100">
+            <CardTitle className="text-emerald-800">
+              Lista de Participantes ({participantesFiltrados.length} de{" "}
+              {totalParticipantes})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/50">
+                    <TableHead>Nombre Completo</TableHead>
+                    <TableHead>Correo Electrónico</TableHead>
+                    <TableHead>Paquete</TableHead>
+                    <TableHead>Cuotas</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fecha de Registro</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {participantesFiltrados.map((p) => (
+                    <TableRow key={p.id} className="hover:bg-gray-50/50">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                            <span className="text-emerald-700 font-medium text-sm">
+                              {p.nombre
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)}
+                            </span>
+                          </div>
+                          <span className="font-medium">{p.nombre}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600">{p.correo}</TableCell>
+                      <TableCell>{getPaqueteBadge(p.paquete)}</TableCell>
+                      <TableCell className="text-center">{p.cuotas}</TableCell>
+                      <TableCell>{getEstadoBadge(p.estado)}</TableCell>
+                      <TableCell className="text-gray-600">{p.fecha}</TableCell>
+                      <TableCell className="text-center">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Eye className="w-4 h-4 text-emerald-600" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

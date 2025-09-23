@@ -3,6 +3,8 @@ import { Lock, ArrowLeft } from "lucide-react";
 import { supabase } from "./lib/cliente"; // cliente Supabase
 import OjoAbierto from "./assets/icon/tabler--eye.svg";
 import OjoCerrado from "./assets/icon/tabler--eye-closed.svg"
+import heroImage from "./assets/hero2.webp";
+import Logo from "./assets/LOGO_HORIZONTALact.png";
 
 export default function LoginPage({ onBack, onLoginSuccess }) {
   const [cedula, setCedula] = useState("");
@@ -47,14 +49,21 @@ export default function LoginPage({ onBack, onLoginSuccess }) {
   return (
     <div className="min-h-screen flex">
       {/* Columna izquierda */}
-      <div className="hidden md:flex w-1/2 bg-gradient-to-b from-[#063040] to-[#27866d] text-white flex-col justify-center items-center p-10">
-        <div className="text-center max-w-md">
-          <div className="flex justify-center mb-6">
-            <span className="text-yellow-400 text-6xl">🩺</span>
-          </div>
-          <h2 className="text-3xl font-bold mb-4">
-            Bienvenido al Congreso de Medicina 2025
-          </h2>
+      <div className="hidden md:flex w-1/2 bg-gradient-to-b from-[#063040] to-[#27866d] text-white flex-col justify-center items-center p-10"
+       style={{
+                backgroundImage: `url(${heroImage})`,
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+      }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-[#063040]/70 to-[#27866d]/70"></div>
+        <div className="relative z-10 text-center max-w-md">
+          <img 
+                src={Logo} 
+                alt="Congreso Logo" 
+                className="w-80 md:w-[28rem] lg:w-[32rem] mb-10" 
+          />
           <p className="text-lg opacity-90">
             Accede con tu cédula registrada.
           </p>

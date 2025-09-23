@@ -4,39 +4,49 @@ import Cuotas from "./component/Cuotas";
 import BotonAdmin from "./component/BotonAdmin";
 export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
   return (
-    <div className="max-w-4xl h-screen min-w-[320px] mx-auto bg-white rounded-xl  space-y-6 pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50">
       {/* Panel de Usuario */}
-      <div className="bg-[#005f5a] p-6 text-white">
-        <div className="flex items-center gap-3">
-          {/* Icono del usuario en círculo */}
-          <div className="bg-[#004643] p-3 rounded-full">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="text-white"
-            >
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12m0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8" />
-            </svg>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white py-8 px-6 mb-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Título principal */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" className="text-white">
+                <path fill="currentColor" d="M20 22h-2v-2a3 3 0 0 0-3-3H9a3 3 0 0 0-3 3v2H4v-2a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5zm-8-9a6 6 0 1 1 0-12a6 6 0 0 1 0 12m0-2a4 4 0 1 0 0-8a4 4 0 0 0 0 8"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl font-semibold">Panel de Usuario</h1>
+              <p className="text-teal-100">Gestión de pagos y cuotas</p>
+            </div>
           </div>
 
-          {/* Título y subtítulo */}
-          <div>
-            <h2 className="text-2xl font-semibold">Panel de Usuario</h2>
-            <p className="text-sm opacity-90">Gestión de pagos y cuotas</p>
+          {/* Información de usuario */}
+          <div className="block md:flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" className="text-white">
+                  <path fill="currentColor" d="M20 22h-2v-2a3 3 0 0 0-3-3H9a3 3 0 0 0-3 3v2H4v-2a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5zm-8-9a6 6 0 1 1 0-12a6 6 0 0 1 0 12m0-2a4 4 0 1 0 0-8a4 4 0 0 0 0 8"/>
+                </svg>
+              </div>
+              <div className="mb-4">
+                <p className="font-medium">{usuario.nombre} {usuario.apellido}</p>
+                <p className="text-sm text-teal-100">
+                  Plan: <span>{usuario.paquete}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {usuario.seleccion_participacion === "Miembro" && (
+                <BotonAdmin onClick={onAdminClick} />
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-2 px-4">
-        <p>{usuario.nombre} {usuario.apellido}</p>
-        <p className="mb-4">
-          Plan: <span>{usuario.paquete}</span>
-        </p>
-       {usuario.rol === "admin" && <BotonAdmin onClick={onAdminClick} />}
-      </div>
 
       {/* Recargos */}
       {/* <RecargosAplicados

@@ -4,7 +4,7 @@ import LoginPage from "./LoginPage";
 import RegisterPage from "./RegisterPage";
 import PanelUsuario from "./PanelUsuario";
 import AdminInscripciones from "./AdminInscripciones";
-
+import ConfirmacionCuenta from "./Confirmacion";
 export default function App() {
   const [view, setView] = useState("landing");
   const [usuario, setUsuario] = useState(null);
@@ -46,6 +46,10 @@ export default function App() {
 
       {view === "admin" && (
         <AdminInscripciones onBack={() => setView("panel")} /> // 👈 volver al panel
+      )}
+      
+      {view === "confirmacion" && (
+        <ConfirmacionCuenta onLogin={() => setView("login")} />
       )}
     </>
   );
