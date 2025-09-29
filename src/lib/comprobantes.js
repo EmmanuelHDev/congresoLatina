@@ -26,38 +26,42 @@ export async function subirComprobante(usuarioId, cuotaId, file) {
 
     const descripcionCuota = cuotaData ? cuotaData.descripcion : `cuota_${cuotaId}`;
 
-    // Normalizar strings para que no tengan espacios raros
-    const cleanNombre = nombreParticipante.replace(/\s+/g, "_");
-    const cleanDescripcion = descripcionCuota.replace(/\s+/g, "_");
+    // 🔹 Normalizar strings
+    const cleanNombre = nombreParticipante
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "_");
 
-    // Nombre único para el archivo
-    const filePath = `comprobantes/${cleanNombre}/${cleanDescripcion}-${Date.now()}-${file.name}`;
+    const cleanDescripcion = descripcionCuota
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "_");
 
-    // Subir al bucket "comprobantes"
+    const safeFileName = file.name
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "_");
+
+    // 🔹 Nombre único para el archivo
+    const filePath = `${cleanNombre}/${cleanDescripcion}-${Date.now()}-${safeFileName}`;
+
+    // 🔹 Subir al bucket "comprobantes"
     const { error: uploadError } = await supabase.storage
       .from("comprobantes")
       .upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
-    // Obtener URL pública
-    const { data } = supabase.storage.from("comprobantes").getPublicUrl(filePath);
-    const archivoUrl = data.publicUrl;
-
-    // Guardar registro en la tabla comprobantes_pago
+    // 🔹 Guardar SOLO la ruta en la tabla comprobantes_pago
     const { error: dbError } = await supabase.from("comprobantes_pago").insert([
       {
         usuario_id: usuarioId,
         cuota_id: cuotaId,
-        archivo_url: archivoUrl,
+        archivo_url: filePath,   // 👈 Guardamos la ruta, NO la signed URL
         tipo_mime: file.type,
-        nombre_archivo: filePath, // 👈 opcional: guardas la ruta del storage
       },
     ]);
 
     if (dbError) throw dbError;
 
-    return { success: true, url: archivoUrl };
+    return { success: true, path: filePath };
   } catch (err) {
     console.error("Error al subir comprobante:", err.message);
     return { success: false, error: err.message };

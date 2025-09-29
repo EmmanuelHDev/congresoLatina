@@ -45,7 +45,7 @@ export default function App() {
       )}
 
       {view === "admin" && (
-        <AdminInscripciones onBack={() => setView("panel")} /> // 👈 volver al panel
+        <AdminInscripciones onBack={() => setView("panel")} /> 
       )}
       
       {view === "confirmacion" && (
