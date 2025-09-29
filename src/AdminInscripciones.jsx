@@ -49,6 +49,7 @@ export default function AdminInscripciones({ onBack }) {
       const { data, error } = await supabase.rpc(
         "obtener_participantes_con_cuota"
       );
+      console.log({ data, error });
       if (error) {
         console.error("Error cargando usuarios:", error.message);
         setLoading(false);
