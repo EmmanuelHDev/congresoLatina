@@ -22,9 +22,10 @@ export default function HeaderAdmin({ onBack }) {
 
       // 🔹 Total Administradores (donde seleccion_participacion = 'Miembro')
       const { count: adminsCount, error: errorAdmins } = await supabase
-        .from("usuarios_congreso")
-        .select("*", { count: "exact", head: true })
-        .eq("seleccion_participacion", "Miembro");
+      .from("usuarios_congreso")
+      .select("*", { count: "exact", head: true })
+      .in("seleccion_participacion", ["Miembro", "Admin"]);
+
 
       if (!errorAdmins) {
         setTotalAdmins(adminsCount || 0);

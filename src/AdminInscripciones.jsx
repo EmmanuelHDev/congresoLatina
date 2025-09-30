@@ -57,15 +57,17 @@ export default function AdminInscripciones({ onBack }) {
       }
 
       const mapeados = data.map((u) => ({
-      id: u.id,
-      nombre: u.nombre_completo,
-      correo: u.correo,
-      paquete: u.paquete || "Sin paquete",
-      estado: u.estado,
-      cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,   // 👈 camelCase
-      fechaRegistro: u.fecha_registro,    // 👈 camelCase
-      comprobante: u.comprobante || null, // 👈 camelCase
-    }));
+        id: u.id,
+        nombre: u.nombre_completo,
+        correo: u.correo,
+        paquete: u.paquete || "Sin paquete",
+        estado: u.estado,
+        cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,
+        fechaRegistro: u.fecha_registro,
+        comprobante: u.comprobante || null,
+        cedula: u.cedula || "",   // 👈 aquí
+      }));
+
       setParticipantes(mapeados);
       setLoading(false);
     };
@@ -104,32 +106,6 @@ export default function AdminInscripciones({ onBack }) {
   const porcentajeActivos = totalParticipantes
     ? Math.round((participantesActivos / totalParticipantes) * 100)
     : 0;
-
-  const getEstadoBadge = (estado) => {
-    switch (estado) {
-      case "Activo":
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-            Activo
-          </Badge>
-        );
-      case "Pendiente":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-            Pendiente
-          </Badge>
-        );
-      case "Cancelado":
-        return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-            Cancelado
-          </Badge>
-        );
-      default:
-        return <Badge>{estado}</Badge>;
-    }
-  };
-
   const getPaqueteBadge = (paquete) => {
     switch (paquete) {
       case "congreso-decameron":
@@ -163,6 +139,7 @@ export default function AdminInscripciones({ onBack }) {
     worksheet.columns = [
       { header: "Nombre Completo", key: "nombre", width: 30 },
       { header: "Correo", key: "correo", width: 30 },
+      { header: "Cédula", key: "cedula", width: 20 },
       { header: "Paquete", key: "paquete", width: 20 },
       { header: "Cuota Actual", key: "cuotaActual", width: 15 },
       { header: "Registro", key: "fechaRegistro", width: 15 },
@@ -174,6 +151,7 @@ export default function AdminInscripciones({ onBack }) {
       worksheet.addRow({
         nombre: p.nombre,
         correo: p.correo,
+        cedula: p.cedula,
         paquete: p.paquete,
         cuotaActual: p.cuotaActual,
         fechaRegistro: p.fechaRegistro,
@@ -294,6 +272,7 @@ export default function AdminInscripciones({ onBack }) {
                     <TableRow className="bg-gray-50/50">
                       <TableHead>Nombre Completo</TableHead>
                       <TableHead>Correo</TableHead>
+                       <TableHead>Cédula</TableHead>
                       <TableHead>Paquete</TableHead>
                       <TableHead>Cuota Actual</TableHead>
                       <TableHead>Registro</TableHead>
@@ -317,6 +296,7 @@ export default function AdminInscripciones({ onBack }) {
                           </div>
                         </TableCell>
                         <TableCell>{p.correo}</TableCell>
+                        <TableCell>{p.cedula}</TableCell>
                         <TableCell>{getPaqueteBadge(p.paquete)}</TableCell>
                         <TableCell className="text-center">
                           {p.cuotaActual}

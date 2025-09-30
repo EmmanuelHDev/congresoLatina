@@ -39,7 +39,7 @@ export default function ComprobanteCell({ comprobante }) {
             {/* Botón de cerrar */}
             <button
               onClick={() => setOpen(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+              className=" cursor-pointer absolute top-2 right-2 text-red-400 hover:text-red-600"
             >
               <X className="w-6 h-6" />
             </button>

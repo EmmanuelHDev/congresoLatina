@@ -46,7 +46,7 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Users size={18} />
-                  <span>+300 Participantes</span>
+                  <span>+100 Participantes</span>
                 </div>
               </div>
 
