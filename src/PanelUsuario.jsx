@@ -12,38 +12,91 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
   const [popup, setPopup] = useState({ visible: false, tipo: "exito", mensaje: "" });
   
   const handleGuardar = async () => {
-    console.log("Usando ID para update:", usuario.id);
-    
+    // 1) Log de diagnóstico
+    console.log("usuario prop:", usuario);
+
+    // 2) Elegir filtro disponible (en ese orden)
+    const filtro =
+      usuario?.id
+        ? { id: usuario.id }
+        : usuario?.auth_id
+        ? { auth_id: usuario.auth_id }
+        : usuario?.correo
+        ? { correo: (usuario.correo || "").trim().toLowerCase() }
+        : null;
+
+    if (!filtro) {
+      setPopup({
+        visible: true,
+        tipo: "error",
+        mensaje: "No hay identificador para actualizar (id/auth_id/correo).",
+      });
+      return;
+    }
+
+    // 3) Verificar que la fila exista con ese filtro (en el cel esto suele fallar)
+    const { data: checkRow, error: checkErr } = await supabase
+      .from("usuarios_congreso")
+      .select("id, auth_id, correo")
+      .match(filtro)
+      .limit(1);
+
+    console.log("Check fila:", { checkRow, checkErr });
+
+    if (checkErr) {
+      setPopup({ visible: true, tipo: "error", mensaje: checkErr.message });
+      return;
+    }
+    if (!checkRow || checkRow.length === 0) {
+      setPopup({
+        visible: true,
+        tipo: "error",
+        mensaje:
+          "No se encontró ningún usuario con los datos actuales (id/auth_id/correo).",
+      });
+      return;
+    }
+
+    // 4) Usar el id real de la fila encontrada para el update
+    const rowId = checkRow[0].id;
 
     const { data, error } = await supabase
-    .from("usuarios_congreso")
-    .update({
-      companero_cuarto: companeroCuarto,
-      nombre_certificado: nombreCertificado,
-    })
-    .eq("auth_id", usuario.auth_id) // 👈 usa el id del usuario que ya existe
-    .select("*");           // 👈 devuelve la fila actualizada
-  
+      .from("usuarios_congreso")
+      .update({
+        companero_cuarto: companeroCuarto,
+        nombre_certificado: nombreCertificado,
+      })
+      .eq("id", rowId)
+      .select("*");
 
     console.log("Resultado update:", { data, error });
 
     if (error) {
       setPopup({ visible: true, tipo: "error", mensaje: error.message });
-    } else if (!data || data.length === 0) {
+      return;
+    }
+    if (!data || data.length === 0) {
       setPopup({
         visible: true,
         tipo: "error",
         mensaje: "No se encontró ningún usuario con ese ID.",
       });
-    } else {
-      setPopup({
-        visible: true,
-        tipo: "exito",
-        mensaje: "Información guardada correctamente.",
-      });
-      setEditMode(false);
+      return;
     }
+
+    // 5) Sincronizar UI con lo que volvió de la BD
+    const updated = data[0];
+    setCompaneroCuarto(updated.companero_cuarto ?? "");
+    setNombreCertificado(updated.nombre_certificado ?? "");
+
+    setPopup({
+      visible: true,
+      tipo: "exito",
+      mensaje: "Información guardada correctamente.",
+    });
+    setEditMode(false);
   };
+
 
   
   return (
