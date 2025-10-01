@@ -5,7 +5,7 @@ export default function Paquetes({ onRegisterClick }) {
     {
       nombre: "Paquete A",
       titulo: "Solo Congreso",
-      descripcion: "Acceso completo al congreso científico",
+      descripcion: "Cuota: 47.50",
       precio: "$120.00",
       boton: "Seleccionar Paquete A",
       popular: false,

@@ -10,9 +10,10 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
   const [nombreCertificado, setNombreCertificado] = useState(usuario.nombre_certificado || "");
   const [editMode, setEditMode] = useState(true); // 👈 comienza editable
   const [popup, setPopup] = useState({ visible: false, tipo: "exito", mensaje: "" });
-
+  
   const handleGuardar = async () => {
     console.log("Usando ID para update:", usuario.id);
+    
 
     const { data, error } = await supabase
     .from("usuarios_congreso")
@@ -20,8 +21,9 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
       companero_cuarto: companeroCuarto,
       nombre_certificado: nombreCertificado,
     })
-    .eq("id", usuario.id) // 👈 usa el id del usuario que ya existe
+    .eq("auth_id", usuario.auth_id) // 👈 usa el id del usuario que ya existe
     .select("*");           // 👈 devuelve la fila actualizada
+  
 
     console.log("Resultado update:", { data, error });
 
@@ -43,7 +45,7 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
     }
   };
 
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 pb-8">
       {/* Panel de Usuario */}
