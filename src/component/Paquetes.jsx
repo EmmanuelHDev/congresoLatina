@@ -5,7 +5,7 @@ export default function Paquetes({ onRegisterClick }) {
     {
       nombre: "Paquete A",
       titulo: "Solo Congreso",
-      descripcion: "Cuota: 47.50",
+      descripcion: "Cuota: 20.00",
       precio: "$120.00",
       boton: "Seleccionar Paquete A",
       popular: false,
@@ -13,7 +13,7 @@ export default function Paquetes({ onRegisterClick }) {
     {
       nombre: "Paquete B",
       titulo: "Solo Decameron",
-      descripcion: "Experiencia completa en resort",
+      descripcion: "Cuota:27.50",
       precio: "$165.00",
       boton: "Seleccionar Paquete B",
       popular: false,
@@ -21,7 +21,7 @@ export default function Paquetes({ onRegisterClick }) {
     {
       nombre: "Paquete C",
       titulo: "Congreso + Decameron",
-      descripcion: "La experiencia completa - Congreso y resort",
+      descripcion: "Cuota:47.50",
       precio: "$285.00",
       boton: "Seleccionar Paquete C",
       popular: true,

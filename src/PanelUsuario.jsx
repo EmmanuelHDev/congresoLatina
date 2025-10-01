@@ -45,94 +45,54 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
   }, [usuario]);
 
   const handleGuardar = async () => {
-    // 1) Log de diagnóstico
-    console.log("usuario prop:", usuario);
-
-    // 2) Elegir filtro disponible (en ese orden)
-    const filtro =
-      usuario?.id
-        ? { id: usuario.id }
-        : usuario?.auth_id
-        ? { auth_id: usuario.auth_id }
-        : usuario?.correo
-        ? { correo: (usuario.correo || "").trim().toLowerCase() }
-        : null;
-
-    if (!filtro) {
-      setPopup({
-        visible: true,
-        tipo: "error",
-        mensaje: "No hay identificador para actualizar (id/auth_id/correo).",
-      });
-      return;
-    }
-
-    // 3) Verificar que la fila exista con ese filtro (en el cel esto suele fallar)
-    const { data: checkRow, error: checkErr } = await supabase
-      .from("usuarios_congreso")
-      .select("id, auth_id, correo")
-      .match(filtro)
-      .limit(1);
-
-    console.log("Check fila:", { checkRow, checkErr });
-
-    if (checkErr) {
-      setPopup({ visible: true, tipo: "error", mensaje: checkErr.message });
-      return;
-    }
-    if (!checkRow || checkRow.length === 0) {
-      setPopup({
-        visible: true,
-        tipo: "error",
-        mensaje:
-          "No se encontró ningún usuario con los datos actuales (id/auth_id/correo).",
-      });
-      return;
-    }
-
-    // 4) Usar el id real de la fila encontrada para el update
-    const rowId = checkRow[0].id;
-
-    const { data, error } = await supabase
-      .from("usuarios_congreso")
-      .update({
-        companero_cuarto: companeroCuarto,
-        nombre_certificado: nombreCertificado,
-      })
-      .eq("id", rowId)
-      .select("*");
-
-    console.log("Resultado update:", { data, error });
-      console.log("usuario en cel:", usuario);
-      console.log("usuario.id:", usuario?.id);
-      console.log("usuario.auth_id:", usuario?.auth_id);
-      console.log("usuario.correo:", usuario?.correo);
-
-    if (error) {
-      setPopup({ visible: true, tipo: "error", mensaje: error.message });
-      return;
-    }
-    if (!data || data.length === 0) {
-      setPopup({
-        visible: true,
-        tipo: "error",
-        mensaje: "No se encontró ningún usuario con ese ID.",
-      });
-      return;
-    }
-
-    // 5) Sincronizar UI con lo que volvió de la BD
-    const updated = data[0];
-    setCompaneroCuarto(updated.companero_cuarto ?? "");
-    setNombreCertificado(updated.nombre_certificado ?? "");
-
+  if (!resolvedId) {
     setPopup({
       visible: true,
-      tipo: "exito",
-      mensaje: "Información guardada correctamente.",
+      tipo: "error",
+      mensaje: "No se pudo resolver el ID del usuario para actualizar.",
     });
-    setEditMode(false);
-  };
+    return;
+  }
+
+  console.log("Guardando cambios para ID:", resolvedId);
+
+  const { data, error } = await supabase
+    .from("usuarios_congreso")
+    .update({
+      companero_cuarto: companeroCuarto,
+      nombre_certificado: nombreCertificado,
+    })
+    .eq("id", resolvedId) // 👈 usamos el id ya resuelto
+    .select("*");
+
+  console.log("Resultado update:", { data, error });
+
+  if (error) {
+    setPopup({ visible: true, tipo: "error", mensaje: error.message });
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    setPopup({
+      visible: true,
+      tipo: "error",
+      mensaje: "No se actualizó ningún registro.",
+    });
+    return;
+  }
+
+  // sincronizar UI con la BD
+  const updated = data[0];
+  setCompaneroCuarto(updated.companero_cuarto ?? "");
+  setNombreCertificado(updated.nombre_certificado ?? "");
+
+  setPopup({
+    visible: true,
+    tipo: "exito",
+    mensaje: "Información guardada correctamente.",
+  });
+  setEditMode(false);
+};
 
 
   
@@ -254,14 +214,15 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
         <div className="mt-6 flex justify-end gap-2">
           {editMode ? (
             <button
-              onClick={handleGuardar}
-              disabled={!usuario?.id}
-              className={`${
-                !usuario?.id ? "opacity-50 cursor-not-allowed" : "bg-[#009588] hover:bg-[#00796b]"
-              } text-white px-4 py-2 rounded-md font-medium`}
-            >
-              Guardar
-            </button>
+            onClick={handleGuardar}
+            disabled={!resolvedId}
+            className={`${
+              !resolvedId ? "opacity-50 cursor-not-allowed" : "bg-[#009588] hover:bg-[#00796b]"
+            } text-white px-4 py-2 rounded-md font-medium`}
+          >
+            Guardar
+          </button>
+
 
           ) : (
             <button
