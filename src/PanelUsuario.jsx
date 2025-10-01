@@ -70,6 +70,10 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
       .select("*");
 
     console.log("Resultado update:", { data, error });
+      console.log("usuario en cel:", usuario);
+      console.log("usuario.id:", usuario?.id);
+      console.log("usuario.auth_id:", usuario?.auth_id);
+      console.log("usuario.correo:", usuario?.correo);
 
     if (error) {
       setPopup({ visible: true, tipo: "error", mensaje: error.message });
