@@ -13,7 +13,6 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
   const [popup, setPopup] = useState({ visible: false, tipo: "exito", mensaje: "" });
   const [resolvedId, setResolvedId] = useState(usuario.id || null);
 
-
   useEffect(() => {
     const fetchUserId = async () => {
       if (usuario?.id) {
@@ -29,15 +28,19 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
 
       const { data, error } = await supabase
         .from("usuarios_congreso")
-        .select("*") // 👈 aquí pedimos todo
+        .select("*") // 👈 pedimos todo
         .match(filtro)
         .single();
 
       if (error) {
         console.error("Error resolviendo usuario:", error);
       } else if (data) {
-        console.log("Usuario encontrado en BD:", data); // 👈 muestra todo
+        console.log("Usuario encontrado en BD:", data);
+
+        // ✅ sincronizar estados con la BD
         setResolvedId(data.id);
+        setCompaneroCuarto(data.companero_cuarto ?? "");
+        setNombreCertificado(data.nombre_certificado ?? "");
       }
     };
 
@@ -45,57 +48,55 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
   }, [usuario]);
 
   const handleGuardar = async () => {
-  if (!resolvedId) {
+    if (!resolvedId) {
+      setPopup({
+        visible: true,
+        tipo: "error",
+        mensaje: "No se pudo resolver el ID del usuario para actualizar.",
+      });
+      return;
+    }
+
+    console.log("Guardando cambios para ID:", resolvedId);
+
+    const { data, error } = await supabase
+      .from("usuarios_congreso")
+      .update({
+        companero_cuarto: companeroCuarto,
+        nombre_certificado: nombreCertificado,
+      })
+      .eq("id", resolvedId) // 👈 usamos el id ya resuelto
+      .select("*");
+
+    console.log("Resultado update:", { data, error });
+
+    if (error) {
+      setPopup({ visible: true, tipo: "error", mensaje: error.message });
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setPopup({
+        visible: true,
+        tipo: "error",
+        mensaje: "No se actualizó ningún registro.",
+      });
+      return;
+    }
+
+    // ✅ sincronizar UI con la BD
+    const updated = data[0];
+    setCompaneroCuarto(updated.companero_cuarto ?? "");
+    setNombreCertificado(updated.nombre_certificado ?? "");
+
     setPopup({
       visible: true,
-      tipo: "error",
-      mensaje: "No se pudo resolver el ID del usuario para actualizar.",
+      tipo: "exito",
+      mensaje: "Información guardada correctamente.",
     });
-    return;
-  }
+    setEditMode(false);
+  };
 
-  console.log("Guardando cambios para ID:", resolvedId);
-
-  const { data, error } = await supabase
-    .from("usuarios_congreso")
-    .update({
-      companero_cuarto: companeroCuarto,
-      nombre_certificado: nombreCertificado,
-    })
-    .eq("id", resolvedId) // 👈 usamos el id ya resuelto
-    .select("*");
-
-  console.log("Resultado update:", { data, error });
-
-  if (error) {
-    setPopup({ visible: true, tipo: "error", mensaje: error.message });
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    setPopup({
-      visible: true,
-      tipo: "error",
-      mensaje: "No se actualizó ningún registro.",
-    });
-    return;
-  }
-
-  // sincronizar UI con la BD
-  const updated = data[0];
-  setCompaneroCuarto(updated.companero_cuarto ?? "");
-  setNombreCertificado(updated.nombre_certificado ?? "");
-
-  setPopup({
-    visible: true,
-    tipo: "exito",
-    mensaje: "Información guardada correctamente.",
-  });
-  setEditMode(false);
-};
-
-
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 pb-8">
       {/* Panel de Usuario */}
@@ -184,7 +185,7 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
               type="text"
               name="companero_cuarto"
               value={companeroCuarto}
-              disabled={!editMode} // 👈 deshabilita si no está en modo edición
+              disabled={!editMode}
               onChange={(e) => setCompaneroCuarto(e.target.value)}
               placeholder="Ingrese nombre del Compañero de cuarto"
               className={`w-full border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-[#009588] ${
@@ -214,16 +215,14 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
         <div className="mt-6 flex justify-end gap-2">
           {editMode ? (
             <button
-            onClick={handleGuardar}
-            disabled={!resolvedId}
-            className={`${
-              !resolvedId ? "opacity-50 cursor-not-allowed" : "bg-[#009588] hover:bg-[#00796b]"
-            } text-white px-4 py-2 rounded-md font-medium`}
-          >
-            Guardar
-          </button>
-
-
+              onClick={handleGuardar}
+              disabled={!resolvedId}
+              className={`${
+                !resolvedId ? "opacity-50 cursor-not-allowed" : "bg-[#009588] hover:bg-[#00796b]"
+              } text-white px-4 py-2 rounded-md font-medium`}
+            >
+              Guardar
+            </button>
           ) : (
             <button
               onClick={() => setEditMode(true)}
