@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
 import { supabase } from "./lib/cliente";
 import RecargosAplicados from "./component/RecargosAplicados";
 import Cuotas from "./component/Cuotas";
@@ -10,7 +11,39 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
   const [nombreCertificado, setNombreCertificado] = useState(usuario.nombre_certificado || "");
   const [editMode, setEditMode] = useState(true); // 👈 comienza editable
   const [popup, setPopup] = useState({ visible: false, tipo: "exito", mensaje: "" });
-  
+  const [resolvedId, setResolvedId] = useState(usuario.id || null);
+
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      if (usuario?.id) {
+        setResolvedId(usuario.id);
+        return;
+      }
+
+      let filtro = {};
+      if (usuario?.auth_id) filtro.auth_id = usuario.auth_id;
+      else if (usuario?.correo) filtro.correo = (usuario.correo || "").trim().toLowerCase();
+
+      if (Object.keys(filtro).length === 0) return;
+
+      const { data, error } = await supabase
+        .from("usuarios_congreso")
+        .select("*") // 👈 aquí pedimos todo
+        .match(filtro)
+        .single();
+
+      if (error) {
+        console.error("Error resolviendo usuario:", error);
+      } else if (data) {
+        console.log("Usuario encontrado en BD:", data); // 👈 muestra todo
+        setResolvedId(data.id);
+      }
+    };
+
+    fetchUserId();
+  }, [usuario]);
+
   const handleGuardar = async () => {
     // 1) Log de diagnóstico
     console.log("usuario prop:", usuario);
