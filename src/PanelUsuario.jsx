@@ -222,10 +222,14 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
           {editMode ? (
             <button
               onClick={handleGuardar}
-              className="bg-[#009588] hover:bg-[#00796b] text-white px-4 py-2 rounded-md font-medium cursor-pointer"
+              disabled={!usuario?.id}
+              className={`${
+                !usuario?.id ? "opacity-50 cursor-not-allowed" : "bg-[#009588] hover:bg-[#00796b]"
+              } text-white px-4 py-2 rounded-md font-medium`}
             >
               Guardar
             </button>
+
           ) : (
             <button
               onClick={() => setEditMode(true)}
