@@ -4,7 +4,7 @@ import ComprobanteCell from "./component/ui/ComprobanteCell";
 import HeaderAdmin from "./component/HeaderAdmin";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-
+import PopupMensaje from "./component/PopupConfirmacion";
 import {
   Card,
   CardContent,
@@ -32,6 +32,7 @@ import {
   TrendingUp,
   FileText,
   Settings,
+  Trash
 } from "lucide-react";
 
 export default function AdminInscripciones({ onBack }) {
@@ -41,6 +42,12 @@ export default function AdminInscripciones({ onBack }) {
   const [filtroCuota, setFiltroCuota] = useState("Todos");
   const [participantes, setParticipantes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmacion, setConfirmacion] = useState({
+  visible: false,
+  id: null,
+  nombre: ""
+});
+
 
   // 🚀 Cargar datos desde Supabase
   useEffect(() => {
@@ -49,7 +56,7 @@ export default function AdminInscripciones({ onBack }) {
       const { data, error } = await supabase.rpc(
         "obtener_participantes_con_cuota"
       );
-      console.log({ data, error });
+     
       if (error) {
         console.error("Error cargando usuarios:", error.message);
         setLoading(false);
@@ -174,7 +181,26 @@ export default function AdminInscripciones({ onBack }) {
     console.error("❌ Error al exportar Excel:", err);
   }
 };
+  const handleEliminar = async (id) => {
 
+    const { error } = await supabase.rpc("eliminar_participante", { p_id: id });
+
+    if (error) {
+      console.error("❌ Error al eliminar:", error.message);
+      setConfirmacion({
+        visible: true,
+        tipo: "error",
+        mensaje: "No se pudo eliminar el participante.",
+      });
+    } else {
+      setParticipantes((prev) => prev.filter((p) => p.id !== id));
+      setConfirmacion({
+        visible: true,
+        tipo: "exito",
+        mensaje: "Participante eliminado correctamente.",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
@@ -303,10 +329,22 @@ export default function AdminInscripciones({ onBack }) {
                         </TableCell>
   
                         <TableCell>{p.fechaRegistro}</TableCell>
-                        
-                       
-                          <ComprobanteCell comprobante={p.comprobante} />
-                        
+                        <ComprobanteCell comprobante={p.comprobante} />
+                        <TableCell className="text-center">
+                          <button
+                            onClick={() =>
+                              setConfirmacion({
+                                visible: true,
+                                id: p.id,
+                                nombre: p.nombre
+                              })
+                            }
+                            className="text-gray-400 hover:text-red-500 transition cursor-pointer"
+                            title="Eliminar"
+                          >
+                            <Trash className="w-5 h-5" />
+                          </button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -316,6 +354,22 @@ export default function AdminInscripciones({ onBack }) {
           </CardContent>
         </Card>
       </div>
+      {confirmacion.visible && (
+        <PopupMensaje
+          nombre={confirmacion.nombre}
+          onCancel={() =>
+            setConfirmacion({ visible: false, id: null, nombre: "" })
+          }
+          onConfirm={async () => {
+            await handleEliminar(confirmacion.id);
+            setConfirmacion({ visible: false, id: null, nombre: "" });
+          }}
+        />
+      )}
     </div>
-  );
+    
+    
+  ); 
 }
+
+

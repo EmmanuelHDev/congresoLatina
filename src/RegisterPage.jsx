@@ -53,7 +53,7 @@ export default function RegisterPage({ onBack }) {
         ...formData,
         cedula: cedulaNormalizada,
         auth_id: authUser.user.id, // 👈 guardamos referencia
-        rol: "participante",
+        seleccion_participacion: "Participante",
       }]);
 
       if (dbError) {

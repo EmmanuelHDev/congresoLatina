@@ -38,12 +38,12 @@ export default function Header({ onLoginClick, onRegisterClick }) {
           >
             Iniciar Sesión
           </button>
-          <button
+          {/* <button
             onClick={onRegisterClick}
             className="px-4 py-2 bg-teal-800 text-white rounded-md hover:bg-teal-700 text-sm cursor-pointer"
           >
             Registrarse
-          </button>
+          </button> */}
         </div>
 
         {/* Mobile Menu Button */}
@@ -74,12 +74,12 @@ export default function Header({ onLoginClick, onRegisterClick }) {
             >
               Iniciar Sesión
             </button>
-            <button
+            {/* <button
               onClick={onRegisterClick}
               className="flex-1 px-4 py-2 bg-teal-800 text-white rounded-md text-sm hover:bg-teal-700"
             >
               Registrarse
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
