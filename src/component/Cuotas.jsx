@@ -115,7 +115,7 @@ useEffect(() => {
     {/* 🔹 Bloque principal de cuotas */}
     <div className="max-w-7xl mx-auto px-6 py-8 pb-12 shadow-lg border-0">
       {/* 🔸 Mostrar mensaje de recargo si aplica */}
-    {usuario.cuota_por_pagar && (
+    {/* {usuario.cuota_por_pagar && (
       <div className="mb-6">
         <RecargosAplicados
           titulo="Recargos Aplicados"
@@ -123,7 +123,7 @@ useEffect(() => {
           descripcion={`Recargo de $10 USD por no haber pagado la cuota ${usuario.cuota_por_pagar} dentro del plazo establecido.`}
         />
       </div>
-    )}
+    )} */}
       <h3 className="flex items-center gap-2">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
           <path

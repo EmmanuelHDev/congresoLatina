@@ -42,6 +42,10 @@ export default function AdminInscripciones({ onBack }) {
     id: null,
     nombre: "",
   });
+  const [popupDetalle, setPopupDetalle] = useState({
+  visible: false,
+  participante: null,
+  });
 
 useEffect(() => {
   const fetchParticipantes = async () => {
@@ -78,6 +82,8 @@ useEffect(() => {
       comprobante: u.comprobante || null,
       cedula: u.cedula || "",
       cuotaPendiente: cuotaMap[u.id] || null, // 🆕 se toma del mapa
+      telefono: u.telefono, 
+      companeroCuarto: u.companero_cuarto
     }));
 
     setParticipantes(mapeados);
@@ -163,7 +169,7 @@ useEffect(() => {
         { header: "Cédula", key: "cedula", width: 20 },
         { header: "Paquete", key: "paquete", width: 20 },
         { header: "Cuota Actual", key: "cuotaActual", width: 15 },
-        { header: "Cuota Pendiente", key: "cuotaPendiente", width: 15 }, // 🆕
+        // { header: "Cuota Pendiente", key: "cuotaPendiente", width: 15 }, // 🆕
         { header: "Registro", key: "fechaRegistro", width: 15 },
         { header: "Comprobante", key: "comprobante", width: 40 },
       ];
@@ -175,9 +181,11 @@ useEffect(() => {
           cedula: p.cedula,
           paquete: p.paquete,
           cuotaActual: p.cuotaActual,
-          cuotaPendiente: p.cuotaPendiente || "N/A",
+          // cuotaPendiente: p.cuotaPendiente || "N/A",
           fechaRegistro: p.fechaRegistro,
           comprobante: p.comprobante || "No subido",
+          telefono: p.telefono,
+          companeroCuarto: p.companeroCuarto
         });
       });
 
@@ -239,7 +247,7 @@ useEffect(() => {
           </CardHeader>
 
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* 🔍 Buscar */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -279,7 +287,7 @@ useEffect(() => {
                 <option value="Completo">Pago Completo</option>
               </select>
 
-              {/* ⚠️ Filtro cuota pendiente */}
+              {/* ⚠️ Filtro cuota pendiente
               <select
                 value={filtroPendiente}
                 onChange={(e) => setFiltroPendiente(e.target.value)}
@@ -288,7 +296,7 @@ useEffect(() => {
                 <option value="Todos">Usuarios con cuota pendientes</option>
                 <option value="Con deuda">Con cuota pendiente</option>
                 <option value="Sin deuda">Sin deuda</option>
-              </select>
+              </select> */}
 
               {/* 🔄 Limpiar */}
               <Button
@@ -323,64 +331,57 @@ useEffect(() => {
             ) : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50/50">
-                      <TableHead>Nombre Completo</TableHead>
-                      <TableHead>Correo</TableHead>
-                      <TableHead>Cédula</TableHead>
-                      <TableHead>Paquete</TableHead>
-                      <TableHead>Cuota Actual</TableHead>
-                      <TableHead>Cuota Pendiente</TableHead>
-                      <TableHead>Registro</TableHead>
-                      <TableHead>Comprobante</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/50">
+                  <TableHead className="text-center"></TableHead>
+                    <TableHead>Nombre Completo</TableHead>
+                    <TableHead>Correo</TableHead>
+                    <TableHead>Cédula</TableHead>
+                    <TableHead>Paquete</TableHead>
+                    <TableHead>Cuota Actual</TableHead>
+                    <TableHead>Registro</TableHead>
+                    <TableHead>Comprobante</TableHead>
+                  </TableRow>
+                </TableHeader>
 
-                  <TableBody>
-                    {participantesFiltrados.map((p) => (
-                      <TableRow key={p.id} className="hover:bg-gray-50/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-semibold">
-                              {p.nombre
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .slice(0, 2)
-                                .toUpperCase()}
-                            </div>
-                            <span className="font-medium">{p.nombre}</span>
+                <TableBody>
+                  {participantesFiltrados.map((p) => (
+                    <TableRow key={p.id} className="hover:bg-gray-50/50">
+                      <TableCell className="flex justify-center gap-3">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="Ver detalles"
+                          className="text-emerald-600 hover:text-emerald-800 cursor-pointer"
+                          onClick={() => setPopupDetalle({ visible: true, participante: p })}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="m14 21l-2 2l-2-2H4.995A1.995 1.995 0 0 1 3 19.005V4.995C3 3.893 3.893 3 4.995 3h14.01C20.107 3 21 3.893 21 4.995v14.01A1.995 1.995 0 0 1 19.005 21zm-7.643-3h11.49a6.99 6.99 0 0 0-5.745-3a6.99 6.99 0 0 0-5.745 3M12 13a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7"/></svg>
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-semibold">
+                            {p.nombre
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
                           </div>
-                        </TableCell>
-                        <TableCell>{p.correo}</TableCell>
-                        <TableCell>{p.cedula}</TableCell>
-                        <TableCell>{getPaqueteBadge(p.paquete)}</TableCell>
-                        <TableCell className="text-center">{p.cuotaActual}</TableCell>
-                        <TableCell className="text-center text-red-600 font-medium">
-                          {p.cuotaPendiente ? `Cuota ${p.cuotaPendiente}` : "-"}
-                        </TableCell>
-                        <TableCell>{p.fechaRegistro}</TableCell>
-                        <ComprobanteCell comprobante={p.comprobante} />
-                        <TableCell className="text-center">
-                          <button
-                            onClick={() =>
-                              setConfirmacion({
-                                visible: true,
-                                id: p.id,
-                                nombre: p.nombre,
-                              })
-                            }
-                            className="text-gray-400 hover:text-red-500 transition cursor-pointer"
-                            title="Eliminar"
-                          >
-                            <Trash className="w-5 h-5" />
-                          </button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          <span className="font-medium">{p.nombre}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{p.correo}</TableCell>
+                      <TableCell>{p.paquete}</TableCell>
+                      <TableCell>{getPaqueteBadge(p.cedula)}</TableCell>
+                      <TableCell className="text-center">{p.cuotaActual}</TableCell>
+                      <TableCell>{p.fechaRegistro}</TableCell>
+                      <ComprobanteCell comprobante={p.comprobante} />
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
 
               </div>
             )}
@@ -401,6 +402,46 @@ useEffect(() => {
           }}
         />
       )}
+      {popupDetalle.visible && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6 relative">
+            {/* Botón de cerrar */}
+            <button
+              onClick={() => setPopupDetalle({ visible: false, participante: null })}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-semibold text-emerald-700 mb-4 text-center">
+              Detalles del Solicitante
+            </h2>
+
+            {popupDetalle.participante && (
+              <div className="space-y-2 text-gray-700">
+                <p><strong>Nombre:</strong> {popupDetalle.participante.nombre}</p>
+                <p><strong>Correo:</strong> {popupDetalle.participante.correo}</p>
+                <p><strong>Cédula:</strong> {popupDetalle.participante.cedula}</p>
+                <p><strong>Paquete:</strong> {popupDetalle.participante.paquete}</p>
+                <p><strong>Cuotas pagadas:</strong> {popupDetalle.participante.cuotaActual}</p>
+                <p><strong>Fecha de registro:</strong> {popupDetalle.participante.fechaRegistro}</p>
+                <p><strong>Compañero:</strong> {popupDetalle.participante.companeroCuarto || "No asignado"}</p>
+                <p><strong>Teléfono:</strong> {popupDetalle.participante.telefono || "No registrado"}</p>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <Button
+                onClick={() => setPopupDetalle({ visible: false, participante: null })}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 cursor-pointer"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
