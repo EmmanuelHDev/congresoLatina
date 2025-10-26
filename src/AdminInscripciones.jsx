@@ -58,7 +58,7 @@ useEffect(() => {
       setLoading(false);
       return;
     }
-
+    //console.log(data);
     // 2️⃣ Traer cuotas pendientes desde la tabla usuarios_congreso
     const { data: cuotasPendientes } = await supabase
       .from("usuarios_congreso")
@@ -181,7 +181,6 @@ useEffect(() => {
           cedula: p.cedula,
           paquete: p.paquete,
           cuotaActual: p.cuotaActual,
-          // cuotaPendiente: p.cuotaPendiente || "N/A",
           fechaRegistro: p.fechaRegistro,
           comprobante: p.comprobante || "No subido",
           telefono: p.telefono,
@@ -330,19 +329,20 @@ useEffect(() => {
               <p className="p-4 text-gray-500">Cargando datos...</p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+              <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-50/50">
-                  <TableHead className="text-center"></TableHead>
-                    <TableHead>Nombre Completo</TableHead>
-                    <TableHead>Correo</TableHead>
-                    <TableHead>Cédula</TableHead>
-                    <TableHead>Paquete</TableHead>
-                    <TableHead>Cuota Actual</TableHead>
-                    <TableHead>Registro</TableHead>
-                    <TableHead>Comprobante</TableHead>
-                  </TableRow>
+              <TableRow className="bg-gray-50/50">
+                <TableHead className="text-center">Detalles</TableHead>
+                <TableHead>Nombre Completo</TableHead>
+                <TableHead>Correo</TableHead>
+                <TableHead>Cédula</TableHead>
+                <TableHead>Paquete</TableHead>
+                <TableHead>Cuota Actual</TableHead>
+                <TableHead>Registro</TableHead>
+                <TableHead>Comprobante</TableHead>
+              </TableRow>
                 </TableHeader>
+
 
                 <TableBody>
                   {participantesFiltrados.map((p) => (
@@ -372,11 +372,11 @@ useEffect(() => {
                         </div>
                       </TableCell>
                       <TableCell>{p.correo}</TableCell>
-                      <TableCell>{p.paquete}</TableCell>
-                      <TableCell>{getPaqueteBadge(p.cedula)}</TableCell>
+                      <TableCell>{p.cedula}</TableCell>
+                      <TableCell>{getPaqueteBadge(p.paquete)}</TableCell>
                       <TableCell className="text-center">{p.cuotaActual}</TableCell>
                       <TableCell>{p.fechaRegistro}</TableCell>
-                      <ComprobanteCell comprobante={p.comprobante} />
+                      <ComprobanteCell comprobante={p.comprobante}/>
                     </TableRow>
                   ))}
                 </TableBody>
