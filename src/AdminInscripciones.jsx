@@ -377,6 +377,23 @@ useEffect(() => {
                       <TableCell className="text-center">{p.cuotaActual}</TableCell>
                       <TableCell>{p.fechaRegistro}</TableCell>
                       <ComprobanteCell comprobante={p.comprobante}/>
+                      <TableCell className="text-center">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Eliminar participante"
+                        className="text-red-500 hover:text-red-700 cursor-pointer"
+                        onClick={() =>
+                          setConfirmacion({
+                            visible: true,
+                            id: p.id,
+                            nombre: p.nombre,
+                          })
+                        }
+                      >
+                        <Trash className="w-5 h-5" />
+                      </Button>
+                    </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
