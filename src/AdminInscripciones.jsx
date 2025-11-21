@@ -37,62 +37,171 @@ export default function AdminInscripciones({ onBack }) {
   const [filtroPendiente, setFiltroPendiente] = useState("Todos"); // 🆕
   const [participantes, setParticipantes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [comprobantesPorCuota, setComprobantesPorCuota] = useState({});
+  const [tabCuota, setTabCuota] = useState(1);
+  const [imagenesPrecargadas, setImagenesPrecargadas] = useState({});
+
   const [confirmacion, setConfirmacion] = useState({
     visible: false,
     id: null,
     nombre: "",
   });
   const [popupDetalle, setPopupDetalle] = useState({
-  visible: false,
-  participante: null,
+    visible: false,
+    participante: null,
   });
 
-useEffect(() => {
-  const fetchParticipantes = async () => {
-    setLoading(true);
+  const cargarComprobantes = async (participante) => {
+    // 1️⃣ Listamos TODOS los folders del bucket
+    const { data: carpetas } = await supabase.storage
+      .from("comprobantes")
+      .list("", { limit: 2000 });
 
-    // 1️⃣ RPC actual
-    const { data, error } = await supabase.rpc("obtener_participantes_con_cuota");
-    if (error) {
-      console.error("Error cargando usuarios:", error.message);
-      setLoading(false);
+    if (!carpetas) return;
+
+    const normalize = (str) =>
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/ñ/g, "n").replace(/Ñ/g, "N").toLowerCase();
+
+    const nombre = normalize(participante.nombre);
+
+    const carpetaReal = carpetas.find(c =>
+      normalize(c.name).includes(nombre.split(" ")[0])
+    );
+
+    if (!carpetaReal) {
+      console.log("❌ No se encontró folder real para", participante.nombre);
       return;
     }
-    //console.log(data);
-    // 2️⃣ Traer cuotas pendientes desde la tabla usuarios_congreso
-    const { data: cuotasPendientes } = await supabase
-      .from("usuarios_congreso")
-      .select("id, cuota_por_pagar");
 
-    // 3️⃣ Crear mapa rápido
-    const cuotaMap = {};
-    cuotasPendientes?.forEach((u) => {
-      cuotaMap[u.id] = u.cuota_por_pagar;
+    const { data: archivos } = await supabase.storage
+      .from("comprobantes")
+      .list(carpetaReal.name);
+
+    const grupos = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+
+    archivos.forEach((f) => {
+      const lower = f.name.toLowerCase();
+      const fullPath = `${carpetaReal.name}/${f.name}`;
+
+      if (lower.startsWith("primera")) grupos[1].push(fullPath);
+      if (lower.startsWith("segunda")) grupos[2].push(fullPath);
+      if (lower.startsWith("tercera")) grupos[3].push(fullPath);
+      if (lower.startsWith("cuarta")) grupos[4].push(fullPath);
+      if (lower.startsWith("quinta")) grupos[5].push(fullPath);
+      if (lower.startsWith("sexta")) grupos[6].push(fullPath);
     });
 
-    // 4️⃣ Unir ambas fuentes
-    const mapeados = data.map((u) => ({
-      id: u.id,
-      nombre: u.nombre_completo,
-      correo: u.correo,
-      paquete: u.paquete || "Sin paquete",
-      estado: u.estado,
-      cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,
-      fechaRegistro: u.fecha_registro,
-      comprobante: u.comprobante || null,
-      cedula: u.cedula || "",
-      cuotaPendiente: cuotaMap[u.id] || null, // 🆕 se toma del mapa
-      telefono: u.telefono, 
-      companeroCuarto: u.companero_cuarto
-    }));
+    // 5️⃣ PRE-CARGA en paralelo
+    const preloaded = {};
 
-    setParticipantes(mapeados);
-    setLoading(false);
+    for (const cuota in grupos) {
+      preloaded[cuota] = [];
+
+      for (const path of grupos[cuota]) {
+        const { data } = supabase.storage.from("comprobantes").getPublicUrl(path);
+
+        const img = new Image();
+        img.src = data.publicUrl;
+
+        preloaded[cuota].push({
+          path,
+          url: data.publicUrl
+        });
+      }
+    }
+
+    setImagenesPrecargadas(preloaded);
+    setComprobantesPorCuota(grupos);
+    setPopupDetalle({ visible: true, participante });
   };
 
-  fetchParticipantes();
-}, []);
 
+
+
+  useEffect(() => {
+    const fetchParticipantes = async () => {
+      setLoading(true);
+
+      // 1️⃣ RPC actual
+      const { data, error } = await supabase.rpc("obtener_participantes_con_cuota");
+      if (error) {
+        console.error("Error cargando usuarios:", error.message);
+        setLoading(false);
+        return;
+      }
+      //console.log(data);
+      // 2️⃣ Traer cuotas pendientes desde la tabla usuarios_congreso
+      const { data: cuotasPendientes } = await supabase
+        .from("usuarios_congreso")
+        .select("id, cuota_por_pagar");
+
+      // 3️⃣ Crear mapa rápido
+      const cuotaMap = {};
+      cuotasPendientes?.forEach((u) => {
+        cuotaMap[u.id] = u.cuota_por_pagar;
+      });
+
+      // 4️⃣ Unir ambas fuentes
+      const mapeados = data.map((u) => ({
+        id: u.id,
+        nombre: u.nombre_completo,
+        correo: u.correo,
+        paquete: u.paquete || "Sin paquete",
+        estado: u.estado,
+        cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,
+        fechaRegistro: u.fecha_registro,
+        comprobante: u.comprobante || null,
+        cedula: u.cedula || "",
+        cuotaPendiente: cuotaMap[u.id] || null, // 🆕 se toma del mapa
+        telefono: u.telefono,
+        companeroCuarto: u.companero_cuarto
+      }));
+
+      setParticipantes(mapeados);
+      setLoading(false);
+    };
+
+    fetchParticipantes();
+  }, []);
+
+  // 🧮 Calcular tamaño total del bucket "comprobantes"
+  useEffect(() => {
+    const calcularTamanoBucket = async () => {
+      let totalBytes = 0;
+
+      try {
+        // 1️⃣ Listar carpetas principales
+        const { data: carpetas, error } = await supabase.storage
+          .from("comprobantes")
+          .list("", { limit: 2000 });
+
+        if (error) {
+          console.error("Error listando carpetas:", error);
+          return;
+        }
+
+        // 2️⃣ Recorrer cada carpeta y sumar archivos internos
+        for (const carpeta of carpetas) {
+          const { data: archivos } = await supabase.storage
+            .from("comprobantes")
+            .list(carpeta.name, { limit: 2000 });
+
+          archivos?.forEach((f) => {
+            totalBytes += f.metadata?.size || 0;
+          });
+        }
+
+        const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
+
+        console.log("📦 Tamaño total del bucket 'comprobantes':", totalMB, "MB");
+      } catch (error) {
+        console.error("Error midiendo bucket:", error);
+      }
+    };
+
+    calcularTamanoBucket();
+  }, []);
 
   // 🔹 Filtros
   const participantesFiltrados = participantes.filter((p) => {
@@ -329,75 +438,75 @@ useEffect(() => {
               <p className="p-4 text-gray-500">Cargando datos...</p>
             ) : (
               <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-              <TableRow className="bg-gray-50/50">
-                <TableHead className="text-center">Detalles</TableHead>
-                <TableHead>Nombre Completo</TableHead>
-                <TableHead>Correo</TableHead>
-                <TableHead>Cédula</TableHead>
-                <TableHead>Paquete</TableHead>
-                <TableHead>Cuota Actual</TableHead>
-                <TableHead>Registro</TableHead>
-                <TableHead>Comprobante</TableHead>
-              </TableRow>
-                </TableHeader>
-
-
-                <TableBody>
-                  {participantesFiltrados.map((p) => (
-                    <TableRow key={p.id} className="hover:bg-gray-50/50">
-                      <TableCell className="flex justify-center gap-3">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          title="Ver detalles"
-                          className="text-emerald-600 hover:text-emerald-800 cursor-pointer"
-                          onClick={() => setPopupDetalle({ visible: true, participante: p })}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="m14 21l-2 2l-2-2H4.995A1.995 1.995 0 0 1 3 19.005V4.995C3 3.893 3.893 3 4.995 3h14.01C20.107 3 21 3.893 21 4.995v14.01A1.995 1.995 0 0 1 19.005 21zm-7.643-3h11.49a6.99 6.99 0 0 0-5.745-3a6.99 6.99 0 0 0-5.745 3M12 13a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7"/></svg>
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-semibold">
-                            {p.nombre
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </div>
-                          <span className="font-medium">{p.nombre}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{p.correo}</TableCell>
-                      <TableCell>{p.cedula}</TableCell>
-                      <TableCell>{getPaqueteBadge(p.paquete)}</TableCell>
-                      <TableCell className="text-center">{p.cuotaActual}</TableCell>
-                      <TableCell>{p.fechaRegistro}</TableCell>
-                      <ComprobanteCell comprobante={p.comprobante}/>
-                      <TableCell className="text-center">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="Eliminar participante"
-                        className="text-red-500 hover:text-red-700 cursor-pointer"
-                        onClick={() =>
-                          setConfirmacion({
-                            visible: true,
-                            id: p.id,
-                            nombre: p.nombre,
-                          })
-                        }
-                      >
-                        <Trash className="w-5 h-5" />
-                      </Button>
-                    </TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50/50">
+                      <TableHead className="text-center">Detalles</TableHead>
+                      <TableHead>Nombre Completo</TableHead>
+                      <TableHead>Correo</TableHead>
+                      <TableHead>Cédula</TableHead>
+                      <TableHead>Paquete</TableHead>
+                      <TableHead>Cuota Actual</TableHead>
+                      <TableHead>Registro</TableHead>
+                      <TableHead>Comprobante</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+
+
+                  <TableBody>
+                    {participantesFiltrados.map((p) => (
+                      <TableRow key={p.id} className="hover:bg-gray-50/50">
+                        <TableCell className="flex justify-center gap-3">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Ver detalles"
+                            className="text-emerald-600 hover:text-emerald-800 cursor-pointer"
+                            onClick={() => cargarComprobantes(p)}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="m14 21l-2 2l-2-2H4.995A1.995 1.995 0 0 1 3 19.005V4.995C3 3.893 3.893 3 4.995 3h14.01C20.107 3 21 3.893 21 4.995v14.01A1.995 1.995 0 0 1 19.005 21zm-7.643-3h11.49a6.99 6.99 0 0 0-5.745-3a6.99 6.99 0 0 0-5.745 3M12 13a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7" /></svg>
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-semibold">
+                              {p.nombre
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </div>
+                            <span className="font-medium">{p.nombre}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{p.correo}</TableCell>
+                        <TableCell>{p.cedula}</TableCell>
+                        <TableCell>{getPaqueteBadge(p.paquete)}</TableCell>
+                        <TableCell className="text-center">{p.cuotaActual}</TableCell>
+                        <TableCell>{p.fechaRegistro}</TableCell>
+                        <ComprobanteCell comprobante={p.comprobante} />
+                        <TableCell className="text-center">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Eliminar participante"
+                            className="text-red-500 hover:text-red-700 cursor-pointer"
+                            onClick={() =>
+                              setConfirmacion({
+                                visible: true,
+                                id: p.id,
+                                nombre: p.nombre,
+                              })
+                            }
+                          >
+                            <Trash className="w-5 h-5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
 
 
               </div>
@@ -420,44 +529,91 @@ useEffect(() => {
         />
       )}
       {popupDetalle.visible && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6 relative">
-            {/* Botón de cerrar */}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden relative">
+
+            {/* Botón cerrar */}
             <button
               onClick={() => setPopupDetalle({ visible: false, participante: null })}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl"
             >
               ✕
             </button>
 
-            <h2 className="text-xl font-semibold text-emerald-700 mb-4 text-center">
-              Detalles del Solicitante
-            </h2>
+            {/* Contenido scrolleable */}
+            <div className="overflow-y-auto max-h-[90vh] p-6">
 
-            {popupDetalle.participante && (
-              <div className="space-y-2 text-gray-700">
-                <p><strong>Nombre:</strong> {popupDetalle.participante.nombre}</p>
-                <p><strong>Correo:</strong> {popupDetalle.participante.correo}</p>
-                <p><strong>Cédula:</strong> {popupDetalle.participante.cedula}</p>
-                <p><strong>Paquete:</strong> {popupDetalle.participante.paquete}</p>
-                <p><strong>Cuotas pagadas:</strong> {popupDetalle.participante.cuotaActual}</p>
-                <p><strong>Fecha de registro:</strong> {popupDetalle.participante.fechaRegistro}</p>
-                <p><strong>Compañero:</strong> {popupDetalle.participante.companeroCuarto || "No asignado"}</p>
-                <p><strong>Teléfono:</strong> {popupDetalle.participante.telefono || "No registrado"}</p>
+              <h2 className="text-2xl font-bold text-emerald-700 mb-4 text-center">
+                Detalles del Solicitante
+              </h2>
+
+              {/* Datos del participante */}
+              {popupDetalle.participante && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-1 gap-x-6 text-gray-700 text-sm mb-6">
+                  <p><strong>Nombre:</strong> {popupDetalle.participante.nombre}</p>
+                  <p><strong>Correo:</strong> {popupDetalle.participante.correo}</p>
+                  <p><strong>Cédula:</strong> {popupDetalle.participante.cedula}</p>
+                  <p><strong>Paquete:</strong> {popupDetalle.participante.paquete}</p>
+                  <p><strong>Cuotas pagadas:</strong> {popupDetalle.participante.cuotaActual}</p>
+                  <p><strong>Fecha registro:</strong> {popupDetalle.participante.fechaRegistro}</p>
+                  <p><strong>Compañero:</strong> {popupDetalle.participante.companeroCuarto || "No asignado"}</p>
+                  <p><strong>Teléfono:</strong> {popupDetalle.participante.telefono || "No registrado"}</p>
+                </div>
+              )}
+
+              {/* Tabs */}
+              <div className="flex gap-2 border-b pb-2 mb-4 overflow-x-auto">
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setTabCuota(n)}
+                    className={`px-3 py-1 rounded-md text-sm font-semibold whitespace-nowrap
+                ${tabCuota === n
+                        ? "bg-emerald-600 text-white"
+                        : "bg-gray-200 text-gray-600 hover:bg-gray-300"}
+              `}
+                  >
+                    Cuota {n}
+                  </button>
+                ))}
               </div>
-            )}
 
-            <div className="mt-6 flex justify-end">
-              <Button
-                onClick={() => setPopupDetalle({ visible: false, participante: null })}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 cursor-pointer"
-              >
-                Cerrar
-              </Button>
+              {/* Contenido del tab */}
+              {!Array.isArray(comprobantesPorCuota[tabCuota]) ? (
+                <p className="text-gray-500 text-sm">Cargando comprobantes...</p>
+              ) : comprobantesPorCuota[tabCuota].length === 0 ? (
+                <p className="text-gray-500 text-sm">No hay comprobantes para esta cuota.</p>
+              ) : (
+                <div className="space-y-6">
+                  {imagenesPrecargadas[tabCuota]?.map((imgObj) => (
+                    <div className="flex justify-center">
+                      <img
+                      key={imgObj.path}
+                      src={imgObj.url}
+                      className="max-w-full max-h-[70vh] object-contain rounded-lg border shadow-lg bg-white"
+                    />
+                    </div>
+                    
+                  ))}
+
+                </div>
+              )}
+
+              {/* Botón cerrar */}
+              <div className="mt-6 flex justify-end">
+                <Button
+                  onClick={() => setPopupDetalle({ visible: false, participante: null })}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 cursor-pointer"
+                >
+                  Cerrar
+                </Button>
+              </div>
+
             </div>
           </div>
         </div>
       )}
+
 
     </div>
   );
