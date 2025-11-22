@@ -52,37 +52,60 @@ export default function AdminInscripciones({ onBack }) {
   });
 
   const cargarComprobantes = async (participante) => {
-    // 1️⃣ Listamos TODOS los folders del bucket
-    const { data: carpetas } = await supabase.storage
+    const { data: carpetas, error: errCarpetas } = await supabase.storage
       .from("comprobantes")
       .list("", { limit: 2000 });
+
+    if (errCarpetas) console.error("❌ Error al listar carpetas:", errCarpetas);
+
 
     if (!carpetas) return;
 
     const normalize = (str) =>
       str.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/ñ/g, "n").replace(/Ñ/g, "N").toLowerCase();
+    const normalizarCarpeta = (str) =>
+      normalize(str)
+        .replace(/[\s]+/g, "_")       // todos los espacios → "_"
+        .replace(/_+/g, "_")          // si hay __ o ___ → "_"
+        .replace(/[^a-z0-9_]/gi, "")  // limpia caracteres raros
+        .replace(/^_+|_+$/g, "")      // quita _ al inicio y final
+        .toLowerCase();
 
     const nombre = normalize(participante.nombre);
+    
+
+    // 2️⃣ Encontrando carpeta real
+    const nombreNormalizado = normalizarCarpeta(participante.nombre);
 
     const carpetaReal = carpetas.find(c =>
-      normalize(c.name).includes(nombre.split(" ")[0])
+      normalizarCarpeta(c.name) === nombreNormalizado
     );
 
+
+
+   
+
     if (!carpetaReal) {
-      console.log("❌ No se encontró folder real para", participante.nombre);
+      console.log("❌ No se encontró carpeta para:", participante.nombre);
       return;
     }
 
-    const { data: archivos } = await supabase.storage
+    // 3️⃣ Listando archivos dentro de esa carpeta
+
+    const { data: archivos, error: errArchivos } = await supabase.storage
       .from("comprobantes")
       .list(carpetaReal.name);
+
+    if (errArchivos) console.error("❌ Error al listar archivos:", errArchivos);
+
 
     const grupos = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
 
     archivos.forEach((f) => {
       const lower = f.name.toLowerCase();
       const fullPath = `${carpetaReal.name}/${f.name}`;
+
 
       if (lower.startsWith("primera")) grupos[1].push(fullPath);
       if (lower.startsWith("segunda")) grupos[2].push(fullPath);
@@ -92,17 +115,19 @@ export default function AdminInscripciones({ onBack }) {
       if (lower.startsWith("sexta")) grupos[6].push(fullPath);
     });
 
-    // 5️⃣ PRE-CARGA en paralelo
+
+
+    // 4️⃣ PRE-CARGA
     const preloaded = {};
 
     for (const cuota in grupos) {
       preloaded[cuota] = [];
 
       for (const path of grupos[cuota]) {
+
         const { data } = supabase.storage.from("comprobantes").getPublicUrl(path);
 
-        const img = new Image();
-        img.src = data.publicUrl;
+
 
         preloaded[cuota].push({
           path,
@@ -111,10 +136,15 @@ export default function AdminInscripciones({ onBack }) {
       }
     }
 
+
+
     setImagenesPrecargadas(preloaded);
     setComprobantesPorCuota(grupos);
+
+
     setPopupDetalle({ visible: true, participante });
   };
+
 
 
 
@@ -194,7 +224,7 @@ export default function AdminInscripciones({ onBack }) {
 
         const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
 
-        console.log("📦 Tamaño total del bucket 'comprobantes':", totalMB, "MB");
+        
       } catch (error) {
         console.error("Error midiendo bucket:", error);
       }
@@ -588,12 +618,12 @@ export default function AdminInscripciones({ onBack }) {
                   {imagenesPrecargadas[tabCuota]?.map((imgObj) => (
                     <div className="flex justify-center">
                       <img
-                      key={imgObj.path}
-                      src={imgObj.url}
-                      className="max-w-full max-h-[70vh] object-contain rounded-lg border shadow-lg bg-white"
-                    />
+                        key={imgObj.path}
+                        src={imgObj.url}
+                        className="max-w-full max-h-[70vh] object-contain rounded-lg border shadow-lg bg-white"
+                      />
                     </div>
-                    
+
                   ))}
 
                 </div>

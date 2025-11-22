@@ -147,7 +147,7 @@ export default function UploadComprobante({
       )}
 
       <p className="text-xs text-gray-500 mt-2">
-        Formatos aceptados: JPG, PNG, PDF (máx. 5MB)
+        Formatos aceptados: JPG, PNG (máx. 5MB)
       </p>
     </div>
   );
