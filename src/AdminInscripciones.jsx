@@ -211,7 +211,7 @@ export default function AdminInscripciones({ onBack }) {
           return;
         }
 
-        // 2️⃣ Recorrer cada carpeta y sumar archivos internos
+        //Recorrer cada carpeta y sumar archivos internos
         for (const carpeta of carpetas) {
           const { data: archivos } = await supabase.storage
             .from("comprobantes")
