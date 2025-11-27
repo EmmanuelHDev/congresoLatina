@@ -40,6 +40,11 @@ export default function AdminInscripciones({ onBack }) {
   const [comprobantesPorCuota, setComprobantesPorCuota] = useState({});
   const [tabCuota, setTabCuota] = useState(1);
   const [imagenesPrecargadas, setImagenesPrecargadas] = useState({});
+  const [accesoPermitido, setAccesoPermitido] = useState(false);
+  const [codigoInput, setCodigoInput] = useState("");
+  const CODIGO_ADMIN = "COEMLATS-2026"; // 👈 cámbialo por lo que tú quieras
+  const [verCodigo, setVerCodigo] = useState(false);
+
 
   const [confirmacion, setConfirmacion] = useState({
     visible: false,
@@ -73,7 +78,7 @@ export default function AdminInscripciones({ onBack }) {
         .toLowerCase();
 
     const nombre = normalize(participante.nombre);
-    
+
 
     // 2️⃣ Encontrando carpeta real
     const nombreNormalizado = normalizarCarpeta(participante.nombre);
@@ -84,7 +89,7 @@ export default function AdminInscripciones({ onBack }) {
 
 
 
-   
+
 
     if (!carpetaReal) {
       console.log("❌ No se encontró carpeta para:", participante.nombre);
@@ -174,19 +179,21 @@ export default function AdminInscripciones({ onBack }) {
 
       // 4️⃣ Unir ambas fuentes
       const mapeados = data.map((u) => ({
-        id: u.id,
-        nombre: u.nombre_completo,
-        correo: u.correo,
-        paquete: u.paquete || "Sin paquete",
-        estado: u.estado,
-        cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,
-        fechaRegistro: u.fecha_registro,
-        comprobante: u.comprobante || null,
-        cedula: u.cedula || "",
-        cuotaPendiente: cuotaMap[u.id] || null, // 🆕 se toma del mapa
-        telefono: u.telefono,
-        companeroCuarto: u.companero_cuarto
-      }));
+    id: u.id,
+    nombre: u.nombre_completo,
+    correo: u.correo,
+    paquete: u.paquete || "Sin paquete",
+    estado: u.estado,
+    cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,
+    fechaRegistro: u.fecha_registro,
+    comprobante: u.comprobante || null,
+    cedula: u.cedula || "",
+    cuotaPendiente: cuotaMap[u.id] || null,
+    telefono: u.telefono,
+    companeroCuarto: u.companero_cuarto,
+    semestre: u.semestre,           // 🆕 AQUI
+}));
+
 
       setParticipantes(mapeados);
       setLoading(false);
@@ -224,7 +231,7 @@ export default function AdminInscripciones({ onBack }) {
 
         const totalMB = (totalBytes / 1024 / 1024).toFixed(2);
 
-        
+
       } catch (error) {
         console.error("Error midiendo bucket:", error);
       }
@@ -308,10 +315,12 @@ export default function AdminInscripciones({ onBack }) {
         { header: "Cédula", key: "cedula", width: 20 },
         { header: "Paquete", key: "paquete", width: 20 },
         { header: "Cuota Actual", key: "cuotaActual", width: 15 },
-        // { header: "Cuota Pendiente", key: "cuotaPendiente", width: 15 }, // 🆕
         { header: "Registro", key: "fechaRegistro", width: 15 },
         { header: "Comprobante", key: "comprobante", width: 40 },
+        { header: "Teléfono", key: "telefono", width: 15 },     // 🆕
+        { header: "Semestre", key: "semestre", width: 12 },     // 🆕
       ];
+
 
       participantesFiltrados.forEach((p) => {
         worksheet.addRow({
@@ -323,8 +332,11 @@ export default function AdminInscripciones({ onBack }) {
           fechaRegistro: p.fechaRegistro,
           comprobante: p.comprobante || "No subido",
           telefono: p.telefono,
+          semestre: p.semestre,                 // 🆕
           companeroCuarto: p.companeroCuarto
         });
+
+
       });
 
       worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -340,27 +352,95 @@ export default function AdminInscripciones({ onBack }) {
       console.error("❌ Error al exportar Excel:", err);
     }
   };
-
-  // 🗑️ Eliminar participante
+  //Eliminar usuarios
   const handleEliminar = async (id) => {
-    const { error } = await supabase.rpc("eliminar_participante", { p_id: id });
+    const resp = await fetch(
+      "https://bioypdecmfkgzsipjjuv.supabase.co/functions/v1/eliminar-user-auth",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ id }),
+      }
+    );
 
-    if (error) {
-      console.error("❌ Error al eliminar:", error.message);
+    const result = await resp.json();
+    console.log(result);
+
+    if (!result.ok) {
       setConfirmacion({
         visible: true,
         tipo: "error",
-        mensaje: "No se pudo eliminar el participante.",
+        mensaje: "No se pudo eliminar el usuario."
       });
-    } else {
-      setParticipantes((prev) => prev.filter((p) => p.id !== id));
-      setConfirmacion({
-        visible: true,
-        tipo: "exito",
-        mensaje: "Participante eliminado correctamente.",
-      });
+      return;
     }
+
+    setParticipantes((prev) => prev.filter((p) => p.id !== id));
+
+    setConfirmacion({
+      visible: true,
+      tipo: "exito",
+      mensaje: "Usuario y autenticación eliminados exitosamente.",
+    });
   };
+
+  if (!accesoPermitido) {
+    return (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
+          <h2 className="text-2xl font-bold text-emerald-700 mb-4">
+            Acceso Restringido
+          </h2>
+
+          <p className="text-gray-600 mb-6">
+            Introduce el código de acceso para continuar.
+          </p>
+
+          <div className="relative mb-4">
+            <input
+              type={verCodigo ? "text" : "password"}
+              className="w-full border rounded px-3 py-2 text-center"
+              placeholder="Código secreto"
+              value={codigoInput}
+              onChange={(e) => setCodigoInput(e.target.value)}
+            />
+
+            {/* OJITO */}
+            <button
+              type="button"
+              onClick={() => setVerCodigo(!verCodigo)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+            >
+              {verCodigo ? (
+                // 👁 Ojo Abierto
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3c5.392 0 9.878 3.88 10.819 9c-.94 5.12-5.427 9-10.819 9s-9.878-3.88-10.818-9C2.122 6.88 6.608 3 12 3m0 16a9.005 9.005 0 0 0 8.778-7a9.005 9.005 0 0 0-17.555 0A9.005 9.005 0 0 0 12 19m0-2.5a4.5 4.5 0 1 1 0-9a4.5 4.5 0 0 1 0 9m0-2a2.5 2.5 0 1 0 0-5a2.5 2.5 0 0 0 0 5" /></svg>
+              ) : (
+                // 👁‍🗨 Ojo Cerrado
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M17.883 19.297A10.95 10.95 0 0 1 12 21c-5.392 0-9.878-3.88-10.818-9A11 11 0 0 1 4.52 5.935L1.394 2.808l1.414-1.414l19.799 19.798l-1.414 1.415zM5.936 7.35A8.97 8.97 0 0 0 3.223 12a9.005 9.005 0 0 0 13.201 5.838l-2.028-2.028A4.5 4.5 0 0 1 8.19 9.604zm6.978 6.978l-3.242-3.241a2.5 2.5 0 0 0 3.241 3.241m7.893 2.265l-1.431-1.431A8.9 8.9 0 0 0 20.778 12A9.005 9.005 0 0 0 9.552 5.338L7.974 3.76C9.221 3.27 10.58 3 12 3c5.392 0 9.878 3.88 10.819 9a10.95 10.95 0 0 1-2.012 4.593m-9.084-9.084Q11.86 7.5 12 7.5a4.5 4.5 0 0 1 4.492 4.778z" /></svg>
+              )}
+            </button>
+          </div>
+
+          <button
+            onClick={() => {
+              if (codigoInput === CODIGO_ADMIN) {
+                setAccesoPermitido(true);
+              } else {
+                alert("Código incorrecto");
+              }
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded w-full cursor-pointer"
+          >
+            Ingresar
+          </button>
+        </div>
+      </div>
+    );
+
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
@@ -588,6 +668,7 @@ export default function AdminInscripciones({ onBack }) {
                   <p><strong>Fecha registro:</strong> {popupDetalle.participante.fechaRegistro}</p>
                   <p><strong>Compañero:</strong> {popupDetalle.participante.companeroCuarto || "No asignado"}</p>
                   <p><strong>Teléfono:</strong> {popupDetalle.participante.telefono || "No registrado"}</p>
+                  <p><strong>Semestre:</strong> {popupDetalle.participante.semestre || "No registrado"}</p>
                 </div>
               )}
 
