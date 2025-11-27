@@ -42,7 +42,7 @@ export default function AdminInscripciones({ onBack }) {
   const [imagenesPrecargadas, setImagenesPrecargadas] = useState({});
   const [accesoPermitido, setAccesoPermitido] = useState(false);
   const [codigoInput, setCodigoInput] = useState("");
-  const CODIGO_ADMIN = "COEMLATS-2026"; //
+  const CODIGO_ADMIN = "COEMLATS-2026"; 
   const [verCodigo, setVerCodigo] = useState(false);
 
 
