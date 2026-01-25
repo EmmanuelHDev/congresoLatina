@@ -34,8 +34,10 @@ export default function AdminInscripciones({ onBack }) {
   const [busqueda, setBusqueda] = useState("");
   const [filtroPaquete, setFiltroPaquete] = useState("Todos");
   const [filtroCuota, setFiltroCuota] = useState("Todos");
-  const [filtroPendiente, setFiltroPendiente] = useState("Todos"); // 🆕
+  const [filtroPendiente, setFiltroPendiente] = useState("Todos");
+  const [filtroSemestre, setFiltroSemestre] = useState("Todos"); // 🆕 NUEVO
   const [participantes, setParticipantes] = useState([]);
+  const [semestresDisponibles, setSemestresDisponibles] = useState([]); // 🆕 NUEVO
   const [loading, setLoading] = useState(true);
   const [comprobantesPorCuota, setComprobantesPorCuota] = useState({});
   const [tabCuota, setTabCuota] = useState(1);
@@ -179,23 +181,28 @@ export default function AdminInscripciones({ onBack }) {
 
       // 4️⃣ Unir ambas fuentes
       const mapeados = data.map((u) => ({
-    id: u.id,
-    nombre: u.nombre_completo,
-    correo: u.correo,
-    paquete: u.paquete || "Sin paquete",
-    estado: u.estado,
-    cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,
-    fechaRegistro: u.fecha_registro,
-    comprobante: u.comprobante || null,
-    cedula: u.cedula || "",
-    cuotaPendiente: cuotaMap[u.id] || null,
-    telefono: u.telefono,
-    companeroCuarto: u.companero_cuarto,
-    semestre: u.semestre,           // 🆕 AQUI
-}));
-
+        id: u.id,
+        nombre: u.nombre_completo,
+        correo: u.correo,
+        paquete: u.paquete || "Sin paquete",
+        estado: u.estado,
+        cuotaActual: u.cuota_actual ? parseInt(u.cuota_actual) : 0,
+        fechaRegistro: u.fecha_registro,
+        comprobante: u.comprobante || null,
+        cedula: u.cedula || "",
+        cuotaPendiente: cuotaMap[u.id] || null,
+        telefono: u.telefono,
+        companeroCuarto: u.companero_cuarto,
+        semestre: u.semestre,           // Está aquí
+      }));
 
       setParticipantes(mapeados);
+
+      // 5️⃣ NUEVO: Extraer semestres únicos y ordenarlos
+      const semestresUnicos = [...new Set(mapeados.map(p => p.semestre).filter(Boolean))];
+      semestresUnicos.sort();
+      setSemestresDisponibles(semestresUnicos);
+
       setLoading(false);
     };
 
@@ -258,7 +265,7 @@ export default function AdminInscripciones({ onBack }) {
       }
     }
 
-    // 🆕 Nuevo filtro: ver quién tiene cuota pendiente
+    // Filtro cuota pendiente
     let coincidePendiente = true;
     if (filtroPendiente !== "Todos") {
       if (filtroPendiente === "Con deuda") {
@@ -268,11 +275,18 @@ export default function AdminInscripciones({ onBack }) {
       }
     }
 
+    // 🆕 NUEVO: Filtro por semestre
+    let coincideSemestre = true;
+    if (filtroSemestre !== "Todos") {
+      coincideSemestre = p.semestre === filtroSemestre;
+    }
+
     return (
       coincideBusqueda &&
       coincidePaquete &&
       coincideCuota &&
-      coincidePendiente
+      coincidePendiente &&
+      coincideSemestre
     );
   });
 
@@ -317,8 +331,8 @@ export default function AdminInscripciones({ onBack }) {
         { header: "Cuota Actual", key: "cuotaActual", width: 15 },
         { header: "Registro", key: "fechaRegistro", width: 15 },
         { header: "Comprobante", key: "comprobante", width: 40 },
-        { header: "Teléfono", key: "telefono", width: 15 },     // 🆕
-        { header: "Semestre", key: "semestre", width: 12 },     // 🆕
+        { header: "Teléfono", key: "telefono", width: 15 },
+        { header: "Semestre", key: "semestre", width: 12 },
       ];
 
 
@@ -332,7 +346,7 @@ export default function AdminInscripciones({ onBack }) {
           fechaRegistro: p.fechaRegistro,
           comprobante: p.comprobante || "No subido",
           telefono: p.telefono,
-          semestre: p.semestre,                 // 🆕
+          semestre: p.semestre,
           companeroCuarto: p.companeroCuarto
         });
 
@@ -465,7 +479,7 @@ export default function AdminInscripciones({ onBack }) {
           </CardHeader>
 
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {/* 🔍 Buscar */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -505,16 +519,19 @@ export default function AdminInscripciones({ onBack }) {
                 <option value="Completo">Pago Completo</option>
               </select>
 
-              {/* ⚠️ Filtro cuota pendiente
+              {/* 🆕 NUEVO: Filtro por Semestre */}
               <select
-                value={filtroPendiente}
-                onChange={(e) => setFiltroPendiente(e.target.value)}
+                value={filtroSemestre}
+                onChange={(e) => setFiltroSemestre(e.target.value)}
                 className="border px-3 py-2 rounded"
               >
-                <option value="Todos">Usuarios con cuota pendientes</option>
-                <option value="Con deuda">Con cuota pendiente</option>
-                <option value="Sin deuda">Sin deuda</option>
-              </select> */}
+                <option value="Todos">Todos los semestres</option>
+                {semestresDisponibles.map((sem) => (
+                  <option key={sem} value={sem}>
+                    {sem}
+                  </option>
+                ))}
+              </select>
 
               {/* 🔄 Limpiar */}
               <Button
@@ -525,10 +542,11 @@ export default function AdminInscripciones({ onBack }) {
                   setFiltroPaquete("Todos");
                   setFiltroCuota("Todos");
                   setFiltroPendiente("Todos");
+                  setFiltroSemestre("Todos"); // 🆕 Resetear filtro de semestre
                 }}
               >
                 <Filter className="w-4 h-4" />
-                Limpiar Filtros
+                Limpiar
               </Button>
             </div>
           </CardContent>
@@ -557,6 +575,7 @@ export default function AdminInscripciones({ onBack }) {
                       <TableHead>Cédula</TableHead>
                       <TableHead>Paquete</TableHead>
                       <TableHead>Cuota Actual</TableHead>
+                      <TableHead>Semestre</TableHead>
                       <TableHead>Registro</TableHead>
                       <TableHead>Comprobante</TableHead>
                     </TableRow>
@@ -594,6 +613,7 @@ export default function AdminInscripciones({ onBack }) {
                         <TableCell>{p.cedula}</TableCell>
                         <TableCell>{getPaqueteBadge(p.paquete)}</TableCell>
                         <TableCell className="text-center">{p.cuotaActual}</TableCell>
+                        <TableCell className="text-center">{p.semestre || "-"}</TableCell>
                         <TableCell>{p.fechaRegistro}</TableCell>
                         <ComprobanteCell comprobante={p.comprobante} />
                         <TableCell className="text-center">
