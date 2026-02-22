@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/cliente";
-import { Html5QrcodeScanner } from "html5-qrcode";
-import { ArrowLeft, CheckCircle, XCircle, AlertCircle, QrCode } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
+import { ArrowLeft, CheckCircle, XCircle, AlertCircle, QrCode, Camera, CameraOff } from "lucide-react";
 import { Card, CardContent } from "./component/ui/card";
 
 export default function AdminAsistencia() {
@@ -10,76 +10,101 @@ export default function AdminAsistencia() {
   const scannerRef = useRef(null);
   const [escaneando, setEscaneando] = useState(false);
   const [procesando, setProcesando] = useState(false);
-  const [ultimoResultado, setUltimoResultado] = useState(null); // { tipo: "exito"|"repetido"|"error", mensaje, estudiante }
+  const [errorCamara, setErrorCamara] = useState(null);
+  const [ultimoResultado, setUltimoResultado] = useState(null);
   const [historial, setHistorial] = useState([]);
   const ultimoCodigoRef = useRef(null);
+  const procesandoRef = useRef(false);
 
   useEffect(() => {
     return () => {
-      // Cleanup al desmontar
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-      }
+      pararCamara();
     };
   }, []);
 
-  const iniciarEscaner = () => {
-    setEscaneando(true);
-    setUltimoResultado(null);
-
-    setTimeout(() => {
-      const scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        {
-          fps: 10,
-          qrbox: { width: 260, height: 260 },
-          aspectRatio: 1.0,
-          showTorchButtonIfSupported: true,
-        },
-        false
-      );
-
-      scanner.render(
-        async (codigoDecodificado) => {
-          // Evitar procesar el mismo código dos veces seguidas
-          if (codigoDecodificado === ultimoCodigoRef.current || procesando) return;
-          ultimoCodigoRef.current = codigoDecodificado;
-
-          setProcesando(true);
-          await marcarAsistencia(codigoDecodificado);
-          setProcesando(false);
-
-          // Resetear para permitir siguiente escaneo después de 3 segundos
-          setTimeout(() => {
-            ultimoCodigoRef.current = null;
-          }, 3000);
-        },
-        (error) => {
-          // Ignorar errores de lectura (son frecuentes mientras busca el QR)
-        }
-      );
-
-      scannerRef.current = scanner;
-    }, 100);
-  };
-
-  const detenerEscaner = () => {
+  const pararCamara = async () => {
     if (scannerRef.current) {
-      scannerRef.current.clear().catch(() => {});
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (_) {}
       scannerRef.current = null;
     }
+  };
+
+  const iniciarEscaner = () => {
+    setErrorCamara(null);
+    setUltimoResultado(null);
+    setEscaneando(true); // primero renderizar el div, el useEffect arranca la cámara
+  };
+
+  // Arrancar la cámara DESPUÉS de que el div esté en el DOM
+  useEffect(() => {
+    if (!escaneando) return;
+
+    let cancelado = false;
+
+    const arrancar = async () => {
+      try {
+        const html5Qrcode = new Html5Qrcode("qr-video");
+
+        await html5Qrcode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
+          async (decodedText) => {
+            let codigo = decodedText;
+            try {
+              const url = new URL(decodedText);
+              const param = url.searchParams.get("codigo");
+              if (param) codigo = param;
+            } catch (_) {}
+
+            if (codigo === ultimoCodigoRef.current || procesandoRef.current) return;
+            ultimoCodigoRef.current = codigo;
+            procesandoRef.current = true;
+            setProcesando(true);
+
+            await marcarAsistencia(codigo);
+
+            setProcesando(false);
+            procesandoRef.current = false;
+            setTimeout(() => { ultimoCodigoRef.current = null; }, 3000);
+          },
+          () => {}
+        );
+
+        if (cancelado) {
+          html5Qrcode.stop().catch(() => {});
+          return;
+        }
+        scannerRef.current = html5Qrcode;
+      } catch (err) {
+        if (!cancelado) {
+          setErrorCamara("No se pudo acceder a la cámara. Verifica los permisos del navegador.");
+          setEscaneando(false);
+        }
+      }
+    };
+
+    arrancar();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [escaneando]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const detenerEscaner = async () => {
+    await pararCamara();
     setEscaneando(false);
     setUltimoResultado(null);
   };
 
   const marcarAsistencia = async (codigo) => {
-    // Buscar inscripción con datos del usuario y taller
     const { data, error } = await supabase
       .from("inscripciones")
       .select(`
         id,
         asistencia,
-        confirmado,
         codigo_confirmacion,
         usuarios_congreso ( nombre, apellido, cedula ),
         talleres ( nombre, dia )
@@ -88,11 +113,7 @@ export default function AdminAsistencia() {
       .single();
 
     if (error || !data) {
-      const resultado = {
-        tipo: "error",
-        mensaje: "Código QR no encontrado o inválido.",
-        codigo,
-      };
+      const resultado = { tipo: "error", mensaje: "Código QR no encontrado o inválido.", codigo };
       setUltimoResultado(resultado);
       setHistorial((prev) => [{ ...resultado, hora: horaActual() }, ...prev].slice(0, 20));
       return;
@@ -111,18 +132,13 @@ export default function AdminAsistencia() {
       return;
     }
 
-    // Marcar asistencia
     const { error: updateError } = await supabase
       .from("inscripciones")
       .update({ asistencia: true, confirmado: true })
       .eq("id", data.id);
 
     if (updateError) {
-      const resultado = {
-        tipo: "error",
-        mensaje: "Error al registrar asistencia: " + updateError.message,
-        codigo,
-      };
+      const resultado = { tipo: "error", mensaje: "Error al registrar: " + updateError.message, codigo };
       setUltimoResultado(resultado);
       setHistorial((prev) => [{ ...resultado, hora: horaActual() }, ...prev].slice(0, 20));
       return;
@@ -139,9 +155,8 @@ export default function AdminAsistencia() {
     setHistorial((prev) => [{ ...resultado, hora: horaActual() }, ...prev].slice(0, 20));
   };
 
-  const horaActual = () => {
-    return new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  };
+  const horaActual = () =>
+    new Date().toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
   const totalRegistrados = historial.filter((h) => h.tipo === "exito").length;
 
@@ -155,7 +170,6 @@ export default function AdminAsistencia() {
             <button
               onClick={() => { detenerEscaner(); navigate("/admin"); }}
               className="cursor-pointer p-2 rounded-lg hover:bg-white/30 transition-colors"
-              title="Volver al panel de admin"
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
@@ -167,8 +181,6 @@ export default function AdminAsistencia() {
               <p className="text-emerald-100">Escanea el QR del estudiante para marcar asistencia</p>
             </div>
           </div>
-
-          {/* Stat */}
           <div className="inline-flex items-center gap-2 bg-white/15 rounded-lg px-4 py-2">
             <CheckCircle className="w-5 h-5 text-emerald-200" />
             <span className="text-sm font-medium">{totalRegistrados} asistencia(s) registrada(s) en esta sesión</span>
@@ -179,7 +191,7 @@ export default function AdminAsistencia() {
       <div className="max-w-5xl mx-auto px-6 pb-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-          {/* Panel del escáner */}
+          {/* Panel escáner */}
           <div>
             <Card className="shadow-lg border-0 overflow-hidden">
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 border-b">
@@ -189,33 +201,51 @@ export default function AdminAsistencia() {
                 </h2>
               </div>
               <CardContent className="p-6">
-                {!escaneando ? (
+                {/* El div siempre está en el DOM — Html5Qrcode lo necesita antes de .start() */}
+                <div
+                  id="qr-video"
+                  className="w-full rounded-lg overflow-hidden bg-black"
+                  style={{ display: escaneando ? "block" : "none", minHeight: escaneando ? 280 : 0 }}
+                />
+
+                {!escaneando && (
                   <div className="text-center py-8">
                     <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <QrCode className="w-10 h-10 text-emerald-600" />
+                      <Camera className="w-10 h-10 text-emerald-600" />
                     </div>
-                    <p className="text-gray-600 mb-6 text-sm">
-                      Activa la cámara para escanear los códigos QR de los estudiantes.
+                    <p className="text-gray-600 mb-2 text-sm">
+                      Activa la cámara para escanear los códigos QR.
                     </p>
+                    <p className="text-gray-400 text-xs mb-6">
+                      El navegador pedirá permiso de cámara la primera vez.
+                    </p>
+                    {errorCamara && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-red-700 text-sm">
+                        {errorCamara}
+                      </div>
+                    )}
                     <button
                       onClick={iniciarEscaner}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition cursor-pointer"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition cursor-pointer flex items-center gap-2 mx-auto"
                     >
+                      <Camera className="w-5 h-5" />
                       Activar Cámara
                     </button>
                   </div>
-                ) : (
-                  <div>
-                    <div id="qr-reader" className="w-full" />
+                )}
+
+                {escaneando && (
+                  <div className="mt-3">
                     {procesando && (
-                      <p className="text-center text-emerald-700 font-medium mt-3 text-sm animate-pulse">
+                      <p className="text-center text-emerald-700 font-medium text-sm animate-pulse mb-2">
                         Procesando...
                       </p>
                     )}
                     <button
                       onClick={detenerEscaner}
-                      className="mt-4 w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-medium transition cursor-pointer"
+                      className="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm font-medium transition cursor-pointer flex items-center justify-center gap-2"
                     >
+                      <CameraOff className="w-4 h-4" />
                       Detener Cámara
                     </button>
                   </div>
@@ -251,19 +281,13 @@ export default function AdminAsistencia() {
                       {ultimoResultado.mensaje}
                     </p>
                     {ultimoResultado.estudiante && (
-                      <p className="text-sm text-gray-700 mt-1">
-                        <strong>Estudiante:</strong> {ultimoResultado.estudiante}
-                      </p>
+                      <p className="text-sm text-gray-700 mt-1"><strong>Estudiante:</strong> {ultimoResultado.estudiante}</p>
                     )}
                     {ultimoResultado.cedula && (
-                      <p className="text-sm text-gray-700">
-                        <strong>Cédula:</strong> {ultimoResultado.cedula}
-                      </p>
+                      <p className="text-sm text-gray-700"><strong>Cédula:</strong> {ultimoResultado.cedula}</p>
                     )}
                     {ultimoResultado.taller && (
-                      <p className="text-sm text-gray-700">
-                        <strong>Taller:</strong> {ultimoResultado.taller}
-                      </p>
+                      <p className="text-sm text-gray-700"><strong>Taller:</strong> {ultimoResultado.taller}</p>
                     )}
                   </div>
                 </div>
@@ -271,7 +295,7 @@ export default function AdminAsistencia() {
             )}
           </div>
 
-          {/* Historial de la sesión */}
+          {/* Historial */}
           <div>
             <Card className="shadow-lg border-0">
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 border-b">

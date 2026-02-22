@@ -31,6 +31,8 @@ export default function AdminTalleres() {
   const [modalInscritos, setModalInscritos] = useState({ visible: false, taller: null, lista: [], cargando: false });
   const [modalEliminar, setModalEliminar] = useState({ visible: false, taller: null });
   const [guardando, setGuardando] = useState(false);
+  const [filtroDia, setFiltroDia] = useState("todos");
+  const [filtroNombre, setFiltroNombre] = useState("");
 
   useEffect(() => {
     cargarTalleres();
@@ -40,7 +42,7 @@ export default function AdminTalleres() {
     setLoading(true);
     const { data, error } = await supabase
       .from("talleres")
-      .select("*")
+      .select("*, inscripciones(count)")
       .order("dia", { ascending: true })
       .order("hora_inicio", { ascending: true });
 
@@ -152,16 +154,24 @@ export default function AdminTalleres() {
   };
 
   const totalInscritos = talleres.reduce(
-    (acc, t) => acc + (t.inscritos_preclinico || 0) + (t.inscritos_clinico || 0), 0
+    (acc, t) => acc + (t.inscripciones?.[0]?.count ?? 0), 0
   );
   const talleresActivos = talleres.filter((t) => t.estado).length;
+
+  const talleresFiltrados = talleres.filter((t) => {
+    const pasaDia = filtroDia === "todos" || String(t.dia) === filtroDia;
+    const pasaNombre = filtroNombre.trim() === "" ||
+      t.nombre.toLowerCase().includes(filtroNombre.toLowerCase()) ||
+      t.expositor.toLowerCase().includes(filtroNombre.toLowerCase());
+    return pasaDia && pasaNombre;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
 
       {/* Header */}
       <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-8 px-6 mb-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="">
           <div className="flex items-center gap-3 mb-6">
             <button
               onClick={() => navigate("/admin")}
@@ -226,12 +236,34 @@ export default function AdminTalleres() {
       </div>
 
       {/* Contenido */}
-      <div className="max-w-7xl mx-auto px-6 pb-12">
+      <div className="px-6 pb-12">
         <Card className="shadow-lg border-0">
           <CardHeader className="bg-gradient-to-r from-emerald-50 to-emerald-100">
-            <CardTitle className="text-emerald-800">
-              Lista de Talleres ({talleres.length})
-            </CardTitle>
+            <div className="flex flex-col md:flex-row md:items-center gap-3">
+              <CardTitle className="text-emerald-800 flex-1">
+                Lista de Talleres ({talleresFiltrados.length}{talleresFiltrados.length !== talleres.length ? ` de ${talleres.length}` : ""})
+              </CardTitle>
+              {/* Filtros */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={filtroDia}
+                  onChange={(e) => setFiltroDia(e.target.value)}
+                  className="text-sm border border-emerald-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                >
+                  <option value="todos">Todos los días</option>
+                  <option value="1">Lunes 2 de Marzo</option>
+                  <option value="2">Martes 3 de Marzo</option>
+                  <option value="3">Miércoles 4 de Marzo</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Buscar taller o expositor..."
+                  value={filtroNombre}
+                  onChange={(e) => setFiltroNombre(e.target.value)}
+                  className="text-sm border border-emerald-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400 w-56"
+                />
+              </div>
+            </div>
           </CardHeader>
 
           <CardContent className="p-0">
@@ -239,33 +271,35 @@ export default function AdminTalleres() {
               <p className="p-6 text-gray-500">Cargando talleres...</p>
             ) : talleres.length === 0 ? (
               <p className="p-6 text-gray-500">No hay talleres registrados.</p>
+            ) : talleresFiltrados.length === 0 ? (
+              <p className="p-6 text-gray-400 text-center">Sin resultados para los filtros aplicados.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50/50">
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Expositor</TableHead>
-                      <TableHead>Día</TableHead>
-                      <TableHead>Horario</TableHead>
-                      <TableHead>Salón</TableHead>
-                      <TableHead className="text-center">Cupos Preclín.</TableHead>
-                      <TableHead className="text-center">Cupos Clín.</TableHead>
-                      <TableHead className="text-center">Inscritos</TableHead>
-                      <TableHead className="text-center">Estado</TableHead>
-                      <TableHead className="text-center">Acciones</TableHead>
+                      <TableHead className="min-w-[200px]">Nombre</TableHead>
+                      <TableHead className="min-w-[150px]">Expositor</TableHead>
+                      <TableHead className="min-w-[160px]">Día</TableHead>
+                      <TableHead className="min-w-[130px]">Horario</TableHead>
+                      <TableHead className="min-w-[120px]">Salón</TableHead>
+                      <TableHead className="text-center min-w-[110px]">Cupos Preclín.</TableHead>
+                      <TableHead className="text-center min-w-[100px]">Cupos Clín.</TableHead>
+                      <TableHead className="text-center min-w-[100px]">Inscritos</TableHead>
+                      <TableHead className="text-center min-w-[90px]">Estado</TableHead>
+                      <TableHead className="text-center min-w-[110px]">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {talleres.map((taller) => {
-                      const inscritos = (taller.inscritos_preclinico || 0) + (taller.inscritos_clinico || 0);
+                    {talleresFiltrados.map((taller) => {
+                      const inscritos = taller.inscripciones?.[0]?.count ?? 0;
                       const cupos = (taller.cupos_preclinico || 0) + (taller.cupos_clinico || 0);
                       return (
                         <TableRow key={taller.id} className="hover:bg-gray-50/50">
-                          <TableCell className="font-medium max-w-[180px]">
-                            <p className="truncate" title={taller.nombre}>{taller.nombre}</p>
+                          <TableCell className="font-medium">
+                            <p title={taller.nombre}>{taller.nombre}</p>
                             {taller.tema && (
-                              <p className="text-xs text-gray-500 truncate" title={taller.tema}>{taller.tema}</p>
+                              <p className="text-xs text-gray-500 truncate max-w-[220px]" title={taller.tema}>{taller.tema}</p>
                             )}
                           </TableCell>
                           <TableCell>{taller.expositor}</TableCell>
@@ -287,14 +321,10 @@ export default function AdminTalleres() {
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className="text-sm">
-                              {taller.inscritos_preclinico || 0}/{taller.cupos_preclinico || 0}
-                            </span>
+                            <span className="text-sm">{taller.cupos_preclinico || 0}</span>
                           </TableCell>
                           <TableCell className="text-center">
-                            <span className="text-sm">
-                              {taller.inscritos_clinico || 0}/{taller.cupos_clinico || 0}
-                            </span>
+                            <span className="text-sm">{taller.cupos_clinico || 0}</span>
                           </TableCell>
                           <TableCell className="text-center">
                             <span className={`font-semibold text-sm ${inscritos >= cupos ? "text-red-600" : "text-emerald-600"}`}>

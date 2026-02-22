@@ -35,7 +35,7 @@ export default function Talleres({ usuario }) {
 
       const { data, error: err } = await supabase
         .from("talleres")
-        .select("*")
+        .select("*, inscripciones(count)")
         .eq("estado", true)
         .order("dia", { ascending: true })
         .order("hora_inicio", { ascending: true });
@@ -118,8 +118,7 @@ export default function Talleres({ usuario }) {
       const cuposDisponibles =
         (taller.cupos_preclinico || 0) +
         (taller.cupos_clinico || 0) -
-        (taller.inscritos_preclinico || 0) -
-        (taller.inscritos_clinico || 0);
+        (taller.inscripciones?.[0]?.count ?? 0);
 
       if (cuposDisponibles <= 0) {
         setPopup({
@@ -148,14 +147,6 @@ export default function Talleres({ usuario }) {
         ]);
 
       if (err) throw err;
-
-      // Actualizar contador
-      await supabase
-        .from("talleres")
-        .update({
-          inscritos_preclinico: (taller.inscritos_preclinico || 0) + 1,
-        })
-        .eq("id", tallerID);
 
       if (usuario?.id) {
         setInscritos([...inscritos, tallerID]);
@@ -317,17 +308,11 @@ export default function Talleres({ usuario }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
                 {tallerePorDia[dia].map((taller) => {
                   const inscrito = inscritos.includes(taller.id);
-                  const cuposDisponibles =
-                    (taller.cupos_preclinico || 0) +
-                    (taller.cupos_clinico || 0) -
-                    (taller.inscritos_preclinico || 0) -
-                    (taller.inscritos_clinico || 0);
                   const totalCupos =
                     (taller.cupos_preclinico || 0) +
                     (taller.cupos_clinico || 0);
-                  const inscritos_total =
-                    (taller.inscritos_preclinico || 0) +
-                    (taller.inscritos_clinico || 0);
+                  const inscritos_total = taller.inscripciones?.[0]?.count ?? 0;
+                  const cuposDisponibles = totalCupos - inscritos_total;
                   const porcentajeOcupacion =
                     totalCupos > 0
                       ? (inscritos_total / totalCupos) * 100
@@ -387,13 +372,7 @@ export default function Talleres({ usuario }) {
                         <div className="flex items-center gap-2">
                           <Users size={16} className="text-blue-600" />
                           <span>
-                            Preclínico: {taller.inscritos_preclinico || 0}/{taller.cupos_preclinico || 0}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users size={16} className="text-purple-600" />
-                          <span>
-                            Clínico: {taller.inscritos_clinico || 0}/{taller.cupos_clinico || 0}
+                            {inscritos_total}/{totalCupos} inscritos · {cuposDisponibles > 0 ? `${cuposDisponibles} disponibles` : "Sin cupos"}
                           </span>
                         </div>
                       </div>
