@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/cliente";
 import ComprobanteCell from "./component/ui/ComprobanteCell";
 import HeaderAdmin from "./component/HeaderAdmin";
@@ -30,7 +31,8 @@ import {
   Trash
 } from "lucide-react";
 
-export default function AdminInscripciones({ onBack }) {
+export default function AdminInscripciones({ onBack, adminAcceso, setAdminAcceso }) {
+  const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState("");
   const [filtroPaquete, setFiltroPaquete] = useState("Todos");
   const [filtroCuota, setFiltroCuota] = useState("Todos");
@@ -42,9 +44,8 @@ export default function AdminInscripciones({ onBack }) {
   const [comprobantesPorCuota, setComprobantesPorCuota] = useState({});
   const [tabCuota, setTabCuota] = useState(1);
   const [imagenesPrecargadas, setImagenesPrecargadas] = useState({});
-  const [accesoPermitido, setAccesoPermitido] = useState(false);
   const [codigoInput, setCodigoInput] = useState("");
-  const CODIGO_ADMIN = "COEMLATS-2026"; 
+  const CODIGO_ADMIN = "COEMLATS-2026";
   const [verCodigo, setVerCodigo] = useState(false);
 
 
@@ -401,7 +402,7 @@ export default function AdminInscripciones({ onBack }) {
     });
   };
 
-  if (!accesoPermitido) {
+  if (!adminAcceso) {
     return (
       <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full text-center">
@@ -441,7 +442,7 @@ export default function AdminInscripciones({ onBack }) {
           <button
             onClick={() => {
               if (codigoInput === CODIGO_ADMIN) {
-                setAccesoPermitido(true);
+                setAdminAcceso(true);
               } else {
                 alert("Código incorrecto");
               }
@@ -466,15 +467,25 @@ export default function AdminInscripciones({ onBack }) {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Filtros de Búsqueda</span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 cursor-pointer"
-                onClick={exportarExcel}
-              >
-                <Download className="w-4 h-4" />
-                Descargar
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 cursor-pointer"
+                  onClick={() => navigate("/admin/talleres")}
+                >
+                  Gestionar Talleres
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 cursor-pointer"
+                  onClick={exportarExcel}
+                >
+                  <Download className="w-4 h-4" />
+                  Descargar
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
 

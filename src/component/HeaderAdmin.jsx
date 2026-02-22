@@ -31,8 +31,14 @@ export default function HeaderAdmin({ onBack }) {
         setTotalAdmins(adminsCount || 0);
       }
 
-      // 🔹 Talleres (por ahora lo dejamos en 0 hasta conectar otra tabla)
-      setTotalTalleres(0);
+      // 🔹 Total Talleres
+      const { count: talleresCount, error: errorTalleres } = await supabase
+        .from("talleres")
+        .select("*", { count: "exact", head: true });
+
+      if (!errorTalleres) {
+        setTotalTalleres(talleresCount || 0);
+      }
     };
 
     fetchStats();

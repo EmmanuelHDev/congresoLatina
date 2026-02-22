@@ -1,46 +1,78 @@
 import React, { useState, useEffect } from "react";
-
+import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/cliente";
 import RecargosAplicados from "./component/RecargosAplicados";
 import Cuotas from "./component/Cuotas";
 import BotonAdmin from "./component/BotonAdmin";
 import PopupMensaje from "./component/PopupMensaje";
+import Talleres from "./component/talleres";
 
-export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
-  const [companeroCuarto, setCompaneroCuarto] = useState(usuario.companero_cuarto || "");
-  const [nombreCertificado, setNombreCertificado] = useState(usuario.nombre_certificado || "");
-  const [editMode, setEditMode] = useState(true); // 👈 comienza editable
-  const [popup, setPopup] = useState({ visible: false, tipo: "exito", mensaje: "" });
-  const [resolvedId, setResolvedId] = useState(usuario.id || null);
+export default function PanelUsuario({ usuario, onLogout }) {
+  const navigate = useNavigate(); // ✅ Hook para navegación
+  const [companeroCuarto, setCompaneroCuarto] = useState(
+    usuario?.companero_cuarto || ""
+  );
+  const [nombreCertificado, setNombreCertificado] = useState(
+    usuario?.nombre_certificado || ""
+  );
+  const [editMode, setEditMode] = useState(false); // 👈 comienza NO editable
+  const [popup, setPopup] = useState({
+    visible: false,
+    tipo: "exito",
+    mensaje: "",
+  });
+  const [resolvedId, setResolvedId] = useState(usuario?.id || null);
+  const [cargando, setCargando] = useState(!usuario?.id);
 
+  // ✅ Si el usuario viene del localStorage, resolver su ID de la BD
   useEffect(() => {
     const fetchUserId = async () => {
       if (usuario?.id) {
         setResolvedId(usuario.id);
+        setCargando(false);
         return;
       }
 
       let filtro = {};
       if (usuario?.auth_id) filtro.auth_id = usuario.auth_id;
-      else if (usuario?.correo) filtro.correo = (usuario.correo || "").trim().toLowerCase();
+      else if (usuario?.cedula)
+        filtro.cedula = (usuario.cedula || "").trim().toLowerCase();
 
-      if (Object.keys(filtro).length === 0) return;
+      if (Object.keys(filtro).length === 0) {
+        setCargando(false);
+        return;
+      }
 
-      const { data, error } = await supabase
-        .from("usuarios_congreso")
-        .select("*") // 👈 pedimos todo
-        .match(filtro)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("usuarios_congreso")
+          .select("*")
+          .match(filtro)
+          .single();
 
-      if (error) {
-        console.error("Error resolviendo usuario:", error);
-      } else if (data) {
-        console.log("Usuario encontrado en BD:", data);
+        if (error) {
+          console.error("❌ Error resolviendo usuario:", error);
+        } else if (data) {
+          console.log("✅ Usuario encontrado en BD:", data);
 
-        // ✅ sincronizar estados con la BD
-        setResolvedId(data.id);
-        setCompaneroCuarto(data.companero_cuarto ?? "");
-        setNombreCertificado(data.nombre_certificado ?? "");
+          // ✅ Sincronizar estados con la BD
+          setResolvedId(data.id);
+          setCompaneroCuarto(data.companero_cuarto ?? "");
+          setNombreCertificado(data.nombre_certificado ?? "");
+
+          // ✅ Actualizar localStorage con datos completos
+          localStorage.setItem(
+            "usuario",
+            JSON.stringify({
+              ...usuario,
+              ...data,
+            })
+          );
+        }
+      } catch (err) {
+        console.error("❌ Error en fetchUserId:", err);
+      } finally {
+        setCargando(false);
       }
     };
 
@@ -57,49 +89,85 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
       return;
     }
 
-    console.log("Guardando cambios para ID:", resolvedId);
+    console.log("💾 Guardando cambios para ID:", resolvedId);
 
-    const { data, error } = await supabase
-      .from("usuarios_congreso")
-      .update({
-        companero_cuarto: companeroCuarto,
-        nombre_certificado: nombreCertificado,
-      })
-      .eq("id", resolvedId) // 👈 usamos el id ya resuelto
-      .select("*");
+    try {
+      const { data, error } = await supabase
+        .from("usuarios_congreso")
+        .update({
+          companero_cuarto: companeroCuarto,
+          nombre_certificado: nombreCertificado,
+        })
+        .eq("id", resolvedId)
+        .select("*");
 
-    console.log("Resultado update:", { data, error });
+      console.log("Resultado update:", { data, error });
 
-    if (error) {
-      setPopup({ visible: true, tipo: "error", mensaje: error.message });
-      return;
-    }
+      if (error) {
+        setPopup({ visible: true, tipo: "error", mensaje: error.message });
+        return;
+      }
 
-    if (!data || data.length === 0) {
+      if (!data || data.length === 0) {
+        setPopup({
+          visible: true,
+          tipo: "error",
+          mensaje: "No se actualizó ningún registro.",
+        });
+        return;
+      }
+
+      // ✅ Sincronizar UI con la BD
+      const updated = data[0];
+      setCompaneroCuarto(updated.companero_cuarto ?? "");
+      setNombreCertificado(updated.nombre_certificado ?? "");
+
+      // ✅ Actualizar localStorage
+      const usuarioActualizado = {
+        ...usuario,
+        ...updated,
+      };
+      localStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+
+      setPopup({
+        visible: true,
+        tipo: "exito",
+        mensaje: "✅ Información guardada correctamente.",
+      });
+      setEditMode(false);
+    } catch (err) {
+      console.error("❌ Error al guardar:", err);
       setPopup({
         visible: true,
         tipo: "error",
-        mensaje: "No se actualizó ningún registro.",
+        mensaje: "Error al guardar los cambios.",
       });
-      return;
     }
-
-    // ✅ sincronizar UI con la BD
-    const updated = data[0];
-    setCompaneroCuarto(updated.companero_cuarto ?? "");
-    setNombreCertificado(updated.nombre_certificado ?? "");
-
-    setPopup({
-      visible: true,
-      tipo: "exito",
-      mensaje: "Información guardada correctamente.",
-    });
-    setEditMode(false);
   };
+
+  const handleLogoutClick = () => {
+    // ✅ Limpiar todo y redirigir
+    onLogout();
+    navigate("/"); // Redirige al inicio
+  };
+
+  const handleAdminClick = () => {
+    navigate("/admin"); // ✅ Navega a admin
+  };
+
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Cargando tu panel...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50 pb-8">
-      {/* Panel de Usuario */}
       {/* Header */}
       <div className="bg-gradient-to-r from-teal-600 to-teal-700 text-white py-8 px-6 mb-8">
         <div className="max-w-7xl mx-auto">
@@ -142,32 +210,40 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
                   />
                 </svg>
               </div>
-              <div className="mb-4">
-                <p className="font-medium">
-                  {usuario.nombre} {usuario.apellido}
+              <div className="mb-4 md:mb-0">
+                <p className="font-medium text-lg">
+                  {usuario?.nombre} {usuario?.apellido}
                 </p>
                 <p className="text-sm text-teal-100">
-                  Plan: <span>{usuario.paquete}</span>
+                  Plan: <span className="font-medium">{usuario?.paquete}</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {usuario.seleccion_participacion === "Admin" && (
-                <BotonAdmin onClick={onAdminClick} />
+            <div className="flex items-center gap-2 mt-4 md:mt-0">
+              {usuario?.seleccion_participacion === "Admin" && (
+                <BotonAdmin onClick={handleAdminClick} />
               )}
             </div>
           </div>
         </div>
       </div>
 
+      {/* ✅ TALLERES - PASAR PROP usuario */}
+      <Talleres usuario={usuario} />
+
       {/* Fechas de cuotas */}
       <Cuotas usuario={usuario} />
 
       {/* Nueva sección con Room y Certificado */}
-      <div className="max-w-7xl mx-auto px-6 py-8 mt-12 shadow-lg border-0 bg-white">
+      <div className="max-w-7xl mx-auto px-6 py-8 mt-12 shadow-lg border-0 bg-white rounded-lg">
         <h2 className="flex gap-1 text-lg font-semibold mb-4 text-gray-700">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+          >
             <path
               fill="#009588"
               d="M14 14.252v2.09A6 6 0 0 0 6 22H4a8 8 0 0 1 10-7.749M12 13c-3.315 0-6-2.685-6-6s2.685-6 6-6s6 2.685 6 6s-2.685 6-6 6m0-2c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4s1.79 4 4 4m6 6v-3h2v3h3v2h-3v3h-2v-3h-3v-2z"
@@ -188,8 +264,8 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
               disabled={!editMode}
               onChange={(e) => setCompaneroCuarto(e.target.value)}
               placeholder="Ingrese nombre del Compañero de cuarto"
-              className={`w-full border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-[#009588] ${
-                !editMode ? "bg-gray-100 cursor-not-allowed" : ""
+              className={`w-full border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-[#009588] transition ${
+                !editMode ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""
               }`}
             />
           </div>
@@ -204,8 +280,8 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
               disabled={!editMode}
               onChange={(e) => setNombreCertificado(e.target.value)}
               placeholder="Ingrese nombre del certificado"
-              className={`w-full border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-[#009588] ${
-                !editMode ? "bg-gray-100 cursor-not-allowed" : ""
+              className={`w-full border px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-[#009588] transition ${
+                !editMode ? "bg-gray-100 cursor-not-allowed text-gray-500" : ""
               }`}
             />
           </div>
@@ -217,16 +293,18 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
             <button
               onClick={handleGuardar}
               disabled={!resolvedId}
-              className={`${
-                !resolvedId ? "opacity-50 cursor-not-allowed" : "bg-[#009588] hover:bg-[#00796b]"
-              } text-white px-4 py-2 rounded-md font-medium`}
+              className={`px-4 py-2 rounded-md font-medium text-white transition ${
+                !resolvedId
+                  ? "opacity-50 cursor-not-allowed bg-gray-400"
+                  : "bg-[#009588] hover:bg-[#00796b]"
+              }`}
             >
               Guardar
             </button>
           ) : (
             <button
               onClick={() => setEditMode(true)}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md font-medium cursor-pointer"
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md font-medium cursor-pointer transition"
             >
               Editar
             </button>
@@ -235,10 +313,10 @@ export default function PanelUsuario({ usuario, onLogout, onAdminClick }) {
       </div>
 
       {/* Footer */}
-      <div className="px-4 mt-6 flex justify-end">
+      <div className="px-4 mt-8 max-w-7xl mx-auto flex justify-end">
         <button
-          onClick={onLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+          onClick={handleLogoutClick}
+          className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md text-sm font-medium transition"
         >
           Cerrar sesión
         </button>

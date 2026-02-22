@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Calendar, MapPin, Users } from "lucide-react";
 import Header from "./component/Header";
 import heroImage from "./assets/hero2.webp";
@@ -6,8 +8,12 @@ import Cuenta from "./component/CuentaRegresiva";
 import Paquetes from "./component/Paquetes";
 import InformacionContacto from "./component/InformacionContacto";
 import FooterCoemlats from "./component/FooterCoemlats";
+import Expositores from "./component/expositores";
+import Programa from "./component/programa";
+export default function LandingPage() {
+  const navigate = useNavigate(); // ✅ AGREGADO: Hook de navegación
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
-export default function LandingPage({ onLoginClick, onRegisterClick }) {
   return (
     <>
       {/* HERO */}
@@ -24,7 +30,8 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
         <div className="absolute inset-0 bg-gradient-to-r from-[#063040]/70 to-[#27866d]/70"></div>
 
         <div className="relative z-10">
-          <Header onLoginClick={onLoginClick} onRegisterClick={onRegisterClick} />
+          {/* ✅ MODIFICADO: Pasar navigate en lugar de callbacks */}
+          <Header navigate={navigate} />
 
           {/* Hero Section */}
           <section className="flex flex-col justify-center items-center text-center px-6 md:px-10 min-h-screen relative">
@@ -54,8 +61,9 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
 
               {/* Botones */}
               <div className="flex flex-col md:flex-row gap-4 mb-6 justify-center">
+                {/* ✅ MODIFICADO: onRegisterClick → navigate("/register") */}
                 <button
-                  onClick={onRegisterClick}
+                  onClick={() => navigate("/register")}
                   className="px-6 py-3 bg-yellow-400 text-gray-900 font-semibold rounded-md hover:bg-yellow-300 cursor-pointer"
                 >
                   Registrarse Ahora
@@ -85,12 +93,12 @@ export default function LandingPage({ onLoginClick, onRegisterClick }) {
       </section>
 
       {/* SECCIÓN PAQUETES */}
-      {/* SECCIÓN PAQUETES */}
-      <Paquetes onRegisterClick={onRegisterClick} />
-
+      {/* ✅ MODIFICADO: onRegisterClick → navigate */}
+      <Paquetes navigate={navigate} />
+        <Expositores/>
+      <Programa/>
       <InformacionContacto/>
       <FooterCoemlats/>
     </>
   );
 }
-

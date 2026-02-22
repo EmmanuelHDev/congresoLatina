@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // ✅ AGREGADO
 import { Menu, X } from "lucide-react";
 // import logoHeader from "../assets/logoHeader.png";
 
-export default function Header({ onLoginClick, onRegisterClick }) {
+export default function Header() { // ✅ MODIFICADO: Sin props
+  const navigate = useNavigate(); // ✅ AGREGADO: Hook de navegación
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -32,8 +34,9 @@ export default function Header({ onLoginClick, onRegisterClick }) {
 
         {/* Botones Desktop */}
         <div className="hidden lg:flex space-x-4">
+          {/* ✅ MODIFICADO: onLoginClick → navigate("/login") */}
           <button
-            onClick={onLoginClick}
+            onClick={() => navigate("/login")}
             className="px-4 py-2 bg-[#063040] text-white rounded-md text-sm hover:bg-[#04222e] cursor-pointer"
           >
             Iniciar Sesión
@@ -68,8 +71,9 @@ export default function Header({ onLoginClick, onRegisterClick }) {
           <a href="#registro" className="block">Registro</a>
           <a href="#venue" className="block">Venue</a>
           <div className="flex space-x-2 mt-2">
+            {/* ✅ MODIFICADO: onLoginClick → navigate("/login") */}
             <button
-              onClick={onLoginClick}
+              onClick={() => navigate("/login")}
               className="flex-1 px-4 py-2 border border-white rounded-md text-sm text-white hover:bg-teal-700"
             >
               Iniciar Sesión

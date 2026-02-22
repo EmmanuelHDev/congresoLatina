@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { supabase } from "./lib/cliente"; // importa tu cliente supabase
+import { useNavigate } from "react-router-dom";
+import { supabase } from "./lib/cliente";
 import Popup from "./component/NotificarDobleUsuario";
-export default function RegisterPage({ onBack }) {
-    const [showPopup, setShowPopup] = useState(false);
+
+export default function RegisterPage() {
+  const navigate = useNavigate(); // ✅ Hook para navegación
+  const [showPopup, setShowPopup] = useState(false);
   const [formData, setFormData] = useState({
     nombre: "",
     apellido: "",
@@ -11,9 +14,9 @@ export default function RegisterPage({ onBack }) {
     universidad: "",
     otra_universidad: "",
     seleccion_participacion: "",
-    paquete: "", 
+    paquete: "",
     telefono: "",
-    correo: ""
+    correo: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -49,12 +52,16 @@ export default function RegisterPage({ onBack }) {
       }
 
       // 2. Insertar datos en tu tabla vinculando auth_id
-      const { error: dbError } = await supabase.from("usuarios_congreso").insert([{
-        ...formData,
-        cedula: cedulaNormalizada,
-        auth_id: authUser.user.id, // 👈 guardamos referencia
-        seleccion_participacion: "Participante",
-      }]);
+      const { error: dbError } = await supabase
+        .from("usuarios_congreso")
+        .insert([
+          {
+            ...formData,
+            cedula: cedulaNormalizada,
+            auth_id: authUser.user.id, // 👈 guardamos referencia
+            seleccion_participacion: "Participante",
+          },
+        ]);
 
       if (dbError) {
         console.error("DB error:", dbError.message);
@@ -74,9 +81,14 @@ export default function RegisterPage({ onBack }) {
           otra_universidad: "",
           seleccion_participacion: "",
           telefono: "",
-          paquete: "", 
-          correo: ""
+          paquete: "",
+          correo: "",
         });
+
+        // ✅ Redirigir al login después de 2 segundos
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       }
     } catch (err) {
       console.error("Error general:", err.message);
@@ -85,8 +97,6 @@ export default function RegisterPage({ onBack }) {
 
     setLoading(false);
   };
-
-
 
   return (
     <div className="min-h-screen flex">
@@ -114,13 +124,15 @@ export default function RegisterPage({ onBack }) {
           {/* Botón volver */}
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => navigate("/")} // ✅ Navegar al inicio
             className="text-sm text-teal-700 hover:underline mb-4 flex items-center"
           >
             ← Volver al sitio principal
           </button>
 
-          <h2 className="text-2xl font-bold text-center mb-2">Formulario de Inscripción</h2>
+          <h2 className="text-2xl font-bold text-center mb-2">
+            Formulario de Inscripción
+          </h2>
           <p className="text-gray-500 text-center mb-6">
             Regístrate para participar en el congreso
           </p>
@@ -128,24 +140,28 @@ export default function RegisterPage({ onBack }) {
           {/* Nombre y Apellido */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nombre
+              </label>
               <input
                 name="nombre"
                 value={formData.nombre}
                 onChange={handleChange}
                 type="text"
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Apellido</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Apellido
+              </label>
               <input
                 name="apellido"
                 value={formData.apellido}
                 onChange={handleChange}
                 type="text"
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 required
               />
             </div>
@@ -153,13 +169,15 @@ export default function RegisterPage({ onBack }) {
 
           {/* Cédula */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cédula
+            </label>
             <input
               name="cedula"
               value={formData.cedula}
               onChange={handleChange}
               type="text"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
               required
             />
           </div>
@@ -167,12 +185,14 @@ export default function RegisterPage({ onBack }) {
           {/* Semestre y Universidad */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Semestre actual</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Semestre actual
+              </label>
               <select
                 name="semestre_actual"
                 value={formData.semestre_actual}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">Seleccione el semestre</option>
                 <option value="I">I (Primero)</option>
@@ -191,17 +211,25 @@ export default function RegisterPage({ onBack }) {
             </div>
             {/* Universidad */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Universidad</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Universidad
+              </label>
               <select
                 name="universidad"
                 value={formData.universidad}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-3 py-2"
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="">Seleccione una universidad</option>
-                <option value="universidad-latina-santiago">Universidad Latina - Santiago</option>
-                <option value="universidad-latina-chiriqui">Universidad Latina - Chiriquí</option>
-                <option value="universidad-latina-panama">Universidad Latina - Panamá</option>
+                <option value="universidad-latina-santiago">
+                  Universidad Latina - Santiago
+                </option>
+                <option value="universidad-latina-chiriqui">
+                  Universidad Latina - Chiriquí
+                </option>
+                <option value="universidad-latina-panama">
+                  Universidad Latina - Panamá
+                </option>
                 <option value="columbus-university">Columbus University</option>
                 <option value="uip">UIP</option>
                 <option value="otra">Otra Universidad</option>
@@ -220,30 +248,30 @@ export default function RegisterPage({ onBack }) {
                   value={formData.otra_universidad || ""}
                   onChange={handleChange}
                   placeholder="Escriba el nombre de su universidad"
-                  className="w-full border rounded-lg px-3 py-2"
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
             )}
-
           </div>
+
           {/* Paquete */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Paquete
-          </label>
-          <select
-            name="paquete"
-            value={formData.paquete || ""}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
-            required
-          >
-            <option value="">Selecciona un paquete</option>
-            <option value="solo-congreso">Solo Congreso</option>
-            <option value="solo-decameron">Solo Decameron</option>
-            <option value="congreso-decameron">Congreso + Decameron</option>
-          </select>
-        </div>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Paquete
+            </label>
+            <select
+              name="paquete"
+              value={formData.paquete || ""}
+              onChange={handleChange}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              required
+            >
+              <option value="">Selecciona un paquete</option>
+              <option value="solo-congreso">Solo Congreso</option>
+              <option value="solo-decameron">Solo Decameron</option>
+              <option value="congreso-decameron">Congreso + Decameron</option>
+            </select>
+          </div>
 
           {/* Selección de participación */}
           <div className="mb-6">
@@ -254,7 +282,7 @@ export default function RegisterPage({ onBack }) {
               name="seleccion_participacion"
               value={formData.seleccion_participacion}
               onChange={handleChange}
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
               required
             >
               <option value="">Selecciona una opción</option>
@@ -273,7 +301,7 @@ export default function RegisterPage({ onBack }) {
               value={formData.telefono}
               onChange={handleChange}
               type="text"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>
 
@@ -287,7 +315,7 @@ export default function RegisterPage({ onBack }) {
               value={formData.correo}
               onChange={handleChange}
               type="email"
-              className="w-full border rounded-lg px-3 py-2"
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
               required
             />
           </div>
@@ -296,7 +324,7 @@ export default function RegisterPage({ onBack }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-teal-800 text-white rounded-lg hover:bg-teal-700"
+            className="w-full py-3 bg-teal-800 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium"
           >
             {loading ? "Enviando..." : "Enviar inscripción"}
           </button>
@@ -304,15 +332,28 @@ export default function RegisterPage({ onBack }) {
           {mensaje && (
             <p className="mt-4 text-center text-sm text-gray-700">{mensaje}</p>
           )}
+
+          {/* Enlace a login */}
+          <p className="text-center text-sm text-gray-600 mt-6">
+            ¿Ya tienes cuenta?{" "}
+            <button
+              onClick={() => navigate("/login")} // ✅ Navegar al login
+              type="button"
+              className="text-teal-700 hover:underline font-medium"
+            >
+              Inicia sesión aquí
+            </button>
+          </p>
         </form>
       </div>
-          {/* 👇 Aquí renderizamos el popup si showPopup es true */}
-    {showPopup && (
-      <Popup
-        message="Ya existe un usuario con esa cédula registrado."
-        onClose={() => setShowPopup(false)}
-      />
-    )}
+
+      {/* 👇 Popup si hay error de doble usuario */}
+      {showPopup && (
+        <Popup
+          message="Ya existe un usuario con esa cédula registrado."
+          onClose={() => setShowPopup(false)}
+        />
+      )}
     </div>
   );
 }
