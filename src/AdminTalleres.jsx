@@ -170,64 +170,65 @@ export default function AdminTalleres() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-8 px-6 mb-8">
+      <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white py-6 px-4 md:py-8 md:px-6 mb-6 md:mb-8">
         <div className="">
-          <div className="flex items-center gap-3 mb-6">
+          {/* Fila superior: back + título + botón */}
+          <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
             <button
               onClick={() => navigate("/admin")}
-              className="cursor-pointer p-2 rounded-lg hover:bg-white/30 transition-colors"
-              title="Volver al panel de admin"
+              className="cursor-pointer p-2 rounded-lg hover:bg-white/30 transition-colors flex-shrink-0"
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
             </button>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Settings className="w-6 h-6" />
+            <div className="p-2 bg-white/20 rounded-lg flex-shrink-0">
+              <Settings className="w-5 h-5 md:w-6 md:h-6" />
             </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-semibold">Gestión de Talleres</h1>
-              <p className="text-emerald-100">Administra talleres e inscripciones</p>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl md:text-3xl font-semibold truncate">Gestión de Talleres</h1>
+              <p className="text-emerald-100 text-xs md:text-sm hidden sm:block">Administra talleres e inscripciones</p>
             </div>
             <button
               onClick={() => navigate("/admin/asistencia")}
-              className="cursor-pointer flex items-center gap-2 bg-white/20 hover:bg-white/30 transition px-4 py-2 rounded-lg text-sm font-medium"
+              className="cursor-pointer flex items-center gap-1.5 bg-white/20 hover:bg-white/30 transition px-3 py-2 rounded-lg text-xs md:text-sm font-medium flex-shrink-0"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
-              Registrar Asistencia
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+              <span className="hidden sm:inline">Registrar Asistencia</span>
+              <span className="sm:hidden">Asistencia</span>
             </button>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-3 md:grid-cols-3 gap-3 md:gap-6">
             <Card className="bg-white/10 border-white/20 text-white">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-emerald-100 text-sm">Total Talleres</p>
-                    <p className="text-3xl font-semibold">{talleres.length}</p>
+                    <p className="text-emerald-100 text-xs md:text-sm">Total Talleres</p>
+                    <p className="text-2xl md:text-3xl font-semibold">{talleres.length}</p>
                   </div>
-                  <Settings className="w-8 h-8 text-emerald-200" />
+                  <Settings className="w-5 h-5 md:w-8 md:h-8 text-emerald-200" />
                 </div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 text-white">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-emerald-100 text-sm">Talleres Activos</p>
-                    <p className="text-3xl font-semibold">{talleresActivos}</p>
+                    <p className="text-emerald-100 text-xs md:text-sm">Activos</p>
+                    <p className="text-2xl md:text-3xl font-semibold">{talleresActivos}</p>
                   </div>
-                  <ToggleRight className="w-8 h-8 text-emerald-200" />
+                  <ToggleRight className="w-5 h-5 md:w-8 md:h-8 text-emerald-200" />
                 </div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-white/20 text-white">
-              <CardContent className="p-6">
+              <CardContent className="p-3 md:p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-emerald-100 text-sm">Total Inscripciones</p>
-                    <p className="text-3xl font-semibold">{totalInscritos}</p>
+                    <p className="text-emerald-100 text-xs md:text-sm">Inscritos</p>
+                    <p className="text-2xl md:text-3xl font-semibold">{totalInscritos}</p>
                   </div>
-                  <Users className="w-8 h-8 text-emerald-200" />
+                  <Users className="w-5 h-5 md:w-8 md:h-8 text-emerald-200" />
                 </div>
               </CardContent>
             </Card>

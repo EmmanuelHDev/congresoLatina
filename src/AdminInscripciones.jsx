@@ -465,13 +465,13 @@ export default function AdminInscripciones({ onBack, adminAcceso, setAdminAcceso
         {/* 🔹 Filtros */}
         <Card className="shadow-lg border-0 mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Filtros de Búsqueda</span>
-              <div className="flex gap-2">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <span className="text-base md:text-lg">Filtros de Búsqueda</span>
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2 cursor-pointer"
+                  className="gap-2 cursor-pointer text-xs md:text-sm"
                   onClick={() => navigate("/admin/talleres")}
                 >
                   Gestionar Talleres
@@ -479,7 +479,7 @@ export default function AdminInscripciones({ onBack, adminAcceso, setAdminAcceso
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2 cursor-pointer"
+                  className="gap-2 cursor-pointer text-xs md:text-sm"
                   onClick={exportarExcel}
                 >
                   <Download className="w-4 h-4" />
@@ -489,24 +489,24 @@ export default function AdminInscripciones({ onBack, adminAcceso, setAdminAcceso
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {/* 🔍 Buscar */}
-              <div className="relative">
+          <CardContent className="p-4 md:p-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {/* Buscar - ocupa 2 columnas en mobile */}
+              <div className="relative col-span-2 md:col-span-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="Buscar por nombre o correo..."
+                  placeholder="Buscar nombre o correo..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 text-sm"
                 />
               </div>
 
-              {/* 🧾 Paquete */}
+              {/* Paquete */}
               <select
                 value={filtroPaquete}
                 onChange={(e) => setFiltroPaquete(e.target.value)}
-                className="border px-3 py-2 rounded"
+                className="border px-2 py-2 rounded text-sm"
               >
                 <option value="Todos">Todos los paquetes</option>
                 <option value="congreso-decameron">Congreso + Decameron</option>
@@ -514,11 +514,11 @@ export default function AdminInscripciones({ onBack, adminAcceso, setAdminAcceso
                 <option value="solo-congreso">Solo Congreso</option>
               </select>
 
-              {/* 💵 Cuota actual */}
+              {/* Cuota */}
               <select
                 value={filtroCuota}
                 onChange={(e) => setFiltroCuota(e.target.value)}
-                className="border px-3 py-2 rounded"
+                className="border px-2 py-2 rounded text-sm"
               >
                 <option value="Todos">Todas las cuotas</option>
                 <option value="1">Primera Cuota</option>
@@ -530,30 +530,28 @@ export default function AdminInscripciones({ onBack, adminAcceso, setAdminAcceso
                 <option value="Completo">Pago Completo</option>
               </select>
 
-              {/* 🆕 NUEVO: Filtro por Semestre */}
+              {/* Semestre */}
               <select
                 value={filtroSemestre}
                 onChange={(e) => setFiltroSemestre(e.target.value)}
-                className="border px-3 py-2 rounded"
+                className="border px-2 py-2 rounded text-sm"
               >
                 <option value="Todos">Todos los semestres</option>
                 {semestresDisponibles.map((sem) => (
-                  <option key={sem} value={sem}>
-                    {sem}
-                  </option>
+                  <option key={sem} value={sem}>{sem}</option>
                 ))}
               </select>
 
-              {/* 🔄 Limpiar */}
+              {/* Limpiar */}
               <Button
                 variant="outline"
-                className="gap-2"
+                className="gap-2 text-sm"
                 onClick={() => {
                   setBusqueda("");
                   setFiltroPaquete("Todos");
                   setFiltroCuota("Todos");
                   setFiltroPendiente("Todos");
-                  setFiltroSemestre("Todos"); // 🆕 Resetear filtro de semestre
+                  setFiltroSemestre("Todos");
                 }}
               >
                 <Filter className="w-4 h-4" />
