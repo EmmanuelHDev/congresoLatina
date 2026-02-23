@@ -95,7 +95,7 @@ export default function LandingPage() {
       {/* SECCIÓN PAQUETES */}
       {/* ✅ MODIFICADO: onRegisterClick → navigate */}
       <Paquetes navigate={navigate} />
-        <Expositores/>
+        {/*<Expositores/>*/}
       <Programa/>
       <InformacionContacto/>
       <FooterCoemlats/>
