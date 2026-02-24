@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/cliente";
-import RecargosAplicados from "./component/RecargosAplicados";
 import Cuotas from "./component/Cuotas";
 import BotonAdmin from "./component/BotonAdmin";
 import PopupMensaje from "./component/PopupMensaje";
@@ -23,18 +22,14 @@ export default function PanelUsuario({ usuario, onLogout }) {
   });
   const [resolvedId, setResolvedId] = useState(usuario?.id || null);
   const [cargando, setCargando] = useState(!usuario?.id);
+  const [usuarioFresh, setUsuarioFresh] = useState(usuario); // datos frescos de la BD
 
-  // ✅ Si el usuario viene del localStorage, resolver su ID de la BD
+  // Siempre re-consultar la BD para tener datos actualizados (semestre, etc.)
   useEffect(() => {
     const fetchUserId = async () => {
-      if (usuario?.id) {
-        setResolvedId(usuario.id);
-        setCargando(false);
-        return;
-      }
-
       let filtro = {};
-      if (usuario?.auth_id) filtro.auth_id = usuario.auth_id;
+      if (usuario?.id) filtro.id = usuario.id;
+      else if (usuario?.auth_id) filtro.auth_id = usuario.auth_id;
       else if (usuario?.cedula)
         filtro.cedula = (usuario.cedula || "").trim().toLowerCase();
 
@@ -53,14 +48,13 @@ export default function PanelUsuario({ usuario, onLogout }) {
         if (error) {
           console.error("❌ Error resolviendo usuario:", error);
         } else if (data) {
-          console.log("✅ Usuario encontrado en BD:", data);
-
-          // ✅ Sincronizar estados con la BD
+          // Sincronizar estados con la BD
           setResolvedId(data.id);
           setCompaneroCuarto(data.companero_cuarto ?? "");
           setNombreCertificado(data.nombre_certificado ?? "");
+          setUsuarioFresh({ ...usuario, ...data }); // 👈 datos frescos para Talleres
 
-          // ✅ Actualizar localStorage con datos completos
+          // Actualizar localStorage con datos completos
           localStorage.setItem(
             "usuario",
             JSON.stringify({
@@ -230,7 +224,7 @@ export default function PanelUsuario({ usuario, onLogout }) {
       </div>
 
       {/* ✅ TALLERES - PASAR PROP usuario */}
-      <Talleres usuario={usuario} />
+      <Talleres usuario={usuarioFresh} />
 
       {/* Fechas de cuotas */}
       <Cuotas usuario={usuario} />

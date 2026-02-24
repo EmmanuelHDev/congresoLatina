@@ -4,7 +4,29 @@ import { Clock, MapPin, Users, CheckCircle, AlertCircle, Loader } from "lucide-r
 import PopupMensaje from "./PopupMensaje";
 import QRCode from "qrcode";
 
+// Convierte semestre en número (ej. "V" → 5, "VII" → 7, "12" → 12)
+const semANumero = (str) => {
+  if (!str) return 0;
+  const s = str.toString().trim();
+  // Si ya es número arábigo
+  const num = parseInt(s, 10);
+  if (!isNaN(num) && num > 0) return num;
+  // Convertir Romano
+  const mapa = { I: 1, V: 5, X: 10, L: 50 };
+  const upper = s.toUpperCase();
+  let resultado = 0;
+  for (let i = 0; i < upper.length; i++) {
+    const actual = mapa[upper[i]] || 0;
+    const siguiente = mapa[upper[i + 1]] || 0;
+    resultado += actual < siguiente ? -actual : actual;
+  }
+  return resultado;
+};
+
 export default function Talleres({ usuario }) {
+  // Categoría del estudiante según semestre
+  const semNum = semANumero(usuario?.semestre_actual);
+  const esClinico = semNum >= 7; // VII en adelante
   const [talleres, setTalleres] = useState([]);
   const [inscritos, setInscritos] = useState([]);
   const [inscritosData, setInscritosData] = useState({}); // taller_id → { qr_code, codigo_confirmacion }
@@ -35,7 +57,7 @@ export default function Talleres({ usuario }) {
 
       const { data, error: err } = await supabase
         .from("talleres")
-        .select("*, inscripciones(count)")
+        .select("*")
         .eq("estado", true)
         .order("dia", { ascending: true })
         .order("hora_inicio", { ascending: true });
@@ -115,23 +137,23 @@ export default function Talleres({ usuario }) {
       const taller = talleres.find((t) => t.id === tallerID);
       if (!taller) throw new Error("Taller no encontrado");
 
-      const cuposDisponibles =
-        (taller.cupos_preclinico || 0) +
-        (taller.cupos_clinico || 0) -
-        (taller.inscripciones?.[0]?.count ?? 0);
+      // Verificar cupos según la categoría del estudiante
+      const cuposCategoria = esClinico
+        ? (taller.cupos_clinico || 0) - (taller.inscritos_clinico || 0)
+        : (taller.cupos_preclinico || 0) - (taller.inscritos_preclinico || 0);
 
-      if (cuposDisponibles <= 0) {
+      if (cuposCategoria <= 0) {
+        const categoria = esClinico ? "clínico" : "preclínico";
         setPopup({
           visible: true,
           tipo: "error",
-          mensaje: "❌ No hay cupos disponibles",
+          mensaje: `❌ No hay cupos disponibles para ${categoria}`,
         });
         return;
       }
 
       const codigoConfirmacion = Math.random().toString(36).substring(2, 15);
 
-      // Insertar - SOLO ESTOS CAMPOS
       const { error: err } = await supabase
         .from("inscripciones")
         .insert([
@@ -147,6 +169,14 @@ export default function Talleres({ usuario }) {
         ]);
 
       if (err) throw err;
+
+      // Actualizar el contador correcto según la categoría
+      const campoCounter = esClinico ? "inscritos_clinico" : "inscritos_preclinico";
+      const valorActual = esClinico ? (taller.inscritos_clinico || 0) : (taller.inscritos_preclinico || 0);
+      await supabase
+        .from("talleres")
+        .update({ [campoCounter]: valorActual + 1 })
+        .eq("id", tallerID);
 
       if (usuario?.id) {
         setInscritos([...inscritos, tallerID]);
@@ -280,6 +310,16 @@ export default function Talleres({ usuario }) {
         <p className="text-gray-600">
           📌 Puedes inscribirte en <strong>solo 1 taller por día</strong>
         </p>
+        {usuario?.semestre_actual && (
+          <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+            esClinico
+              ? "bg-purple-100 text-purple-700"
+              : "bg-blue-100 text-blue-700"
+          }`}>
+            <Users size={14} />
+            {esClinico ? "Clínico" : "Preclínico"} · Semestre {usuario.semestre_actual}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -308,11 +348,21 @@ export default function Talleres({ usuario }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
                 {tallerePorDia[dia].map((taller) => {
                   const inscrito = inscritos.includes(taller.id);
-                  const totalCupos =
-                    (taller.cupos_preclinico || 0) +
-                    (taller.cupos_clinico || 0);
-                  const inscritos_total = taller.inscripciones?.[0]?.count ?? 0;
-                  const cuposDisponibles = totalCupos - inscritos_total;
+
+                  // Cupos separados por categoría
+                  const cuposPrec = taller.cupos_preclinico || 0;
+                  const cuposClinic = taller.cupos_clinico || 0;
+                  const inscritosPrec = taller.inscritos_preclinico || 0;
+                  const inscritosClinic = taller.inscritos_clinico || 0;
+                  const dispPrec = cuposPrec - inscritosPrec;
+                  const dispClinic = cuposClinic - inscritosClinic;
+
+                  const totalCupos = cuposPrec + cuposClinic;
+                  const inscritos_total = inscritosPrec + inscritosClinic;
+
+                  // Cupos disponibles para ESTE estudiante según su categoría
+                  const cuposDisponibles = esClinico ? dispClinic : dispPrec;
+
                   const porcentajeOcupacion =
                     totalCupos > 0
                       ? (inscritos_total / totalCupos) * 100
@@ -369,12 +419,32 @@ export default function Talleres({ usuario }) {
                           <MapPin size={16} className="text-teal-600" />
                           <span>{taller.salon}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Users size={16} className="text-blue-600" />
-                          <span>
-                            {inscritos_total}/{totalCupos} inscritos · {cuposDisponibles > 0 ? `${cuposDisponibles} disponibles` : "Sin cupos"}
-                          </span>
-                        </div>
+                        {cuposPrec > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Users size={16} className="text-blue-600" />
+                            <span>
+                              Preclínico: {inscritosPrec}/{cuposPrec}
+                              {!esClinico && (
+                                <span className={`ml-1 font-medium ${dispPrec > 0 ? "text-green-600" : "text-red-500"}`}>
+                                  · {dispPrec > 0 ? `${dispPrec} disponibles` : "Sin cupos"}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        {cuposClinic > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Users size={16} className="text-purple-600" />
+                            <span>
+                              Clínico: {inscritosClinic}/{cuposClinic}
+                              {esClinico && (
+                                <span className={`ml-1 font-medium ${dispClinic > 0 ? "text-green-600" : "text-red-500"}`}>
+                                  · {dispClinic > 0 ? `${dispClinic} disponibles` : "Sin cupos"}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {totalCupos > 0 && (
@@ -409,7 +479,7 @@ export default function Talleres({ usuario }) {
                         {inscrito
                           ? "✓ Inscripción confirmada"
                           : cuposDisponibles <= 0
-                          ? "Sin cupos"
+                          ? `Sin cupos (${esClinico ? "clínico" : "preclínico"})`
                           : otroTallerDelDiaInscrito
                           ? "Ya inscrito en otro"
                           : "Inscribirse"}
