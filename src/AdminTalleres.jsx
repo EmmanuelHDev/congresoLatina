@@ -15,12 +15,14 @@ import {
 } from "lucide-react";
 
 const DIAS = { 1: "Lunes 2 de Marzo", 2: "Martes 3 de Marzo", 3: "Miércoles 4 de Marzo" };
+const SEMESTRES_ROMANO = { 1:'I', 2:'II', 3:'III', 4:'IV', 5:'V', 6:'VI', 7:'VII', 8:'VIII', 9:'IX', 10:'X', 11:'XI', 12:'XII' };
 
 const TALLER_VACIO = {
   nombre: "", expositor: "", tema: "", hora_inicio: "",
   hora_fin: "", salon: "", dia: 1, estado: true,
   cupos_preclinico: 0, cupos_clinico: 0,
   inscritos_preclinico: 0, inscritos_clinico: 0,
+  semestres_permitidos: [],
 };
 
 export default function AdminTalleres() {
@@ -79,6 +81,7 @@ export default function AdminTalleres() {
       cupos_clinico: Number(t.cupos_clinico) || 0,
       inscritos_preclinico: Number(t.inscritos_preclinico) || 0,
       inscritos_clinico: Number(t.inscritos_clinico) || 0,
+      semestres_permitidos: t.semestres_permitidos || [],
     };
 
     let error;
@@ -302,6 +305,11 @@ export default function AdminTalleres() {
                             {taller.tema && (
                               <p className="text-xs text-gray-500 truncate max-w-[220px]" title={taller.tema}>{taller.tema}</p>
                             )}
+                            {(taller.semestres_permitidos || []).length > 0 && (
+                              <p className="text-xs text-amber-700 font-medium mt-0.5">
+                                Solo sem. {taller.semestres_permitidos.map((s) => SEMESTRES_ROMANO[s] || s).join(", ")}
+                              </p>
+                            )}
                           </TableCell>
                           <TableCell>{taller.expositor}</TableCell>
                           <TableCell>
@@ -518,6 +526,42 @@ export default function AdminTalleres() {
                   value={modalForm.taller.inscritos_clinico}
                   onChange={(e) => setModalForm({ ...modalForm, taller: { ...modalForm.taller, inscritos_clinico: e.target.value } })}
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Restricción por semestre
+                  <span className="ml-2 text-xs text-gray-400 font-normal">(dejar sin marcar = todos los semestres pueden inscribirse)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map((sem) => {
+                    const checked = (modalForm.taller.semestres_permitidos || []).includes(sem);
+                    return (
+                      <label key={sem} className={`flex items-center gap-1 px-2.5 py-1 rounded-md border cursor-pointer text-sm select-none transition ${
+                        checked ? "bg-emerald-100 border-emerald-400 text-emerald-800 font-medium" : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                      }`}>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={checked}
+                          onChange={(e) => {
+                            const current = modalForm.taller.semestres_permitidos || [];
+                            const updated = e.target.checked
+                              ? [...current, sem].sort((a, b) => a - b)
+                              : current.filter((s) => s !== sem);
+                            setModalForm({ ...modalForm, taller: { ...modalForm.taller, semestres_permitidos: updated } });
+                          }}
+                        />
+                        {SEMESTRES_ROMANO[sem]}
+                      </label>
+                    );
+                  })}
+                </div>
+                {(modalForm.taller.semestres_permitidos || []).length > 0 && (
+                  <p className="mt-1.5 text-xs text-emerald-700">
+                    Solo podrán inscribirse: semestre {(modalForm.taller.semestres_permitidos).map((s) => SEMESTRES_ROMANO[s]).join(", ")}
+                  </p>
+                )}
               </div>
             </div>
 

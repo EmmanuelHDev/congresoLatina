@@ -4,6 +4,8 @@ import { Clock, MapPin, Users, CheckCircle, AlertCircle, Loader } from "lucide-r
 import PopupMensaje from "./PopupMensaje";
 import QRCode from "qrcode";
 
+const SEMESTRES_ROMANO = { 1:'I', 2:'II', 3:'III', 4:'IV', 5:'V', 6:'VI', 7:'VII', 8:'VIII', 9:'IX', 10:'X', 11:'XI', 12:'XII' };
+
 // Convierte semestre en número (ej. "V" → 5, "VII" → 7, "12" → 12)
 const semANumero = (str) => {
   if (!str) return 0;
@@ -27,6 +29,13 @@ export default function Talleres({ usuario }) {
   // Categoría del estudiante según semestre
   const semNum = semANumero(usuario?.semestre_actual);
   const esClinico = semNum >= 7; // VII en adelante
+
+  // Verifica si el usuario puede inscribirse según restricción de semestres del taller
+  const semestrePermitido = (taller) => {
+    const permitidos = taller.semestres_permitidos || [];
+    if (permitidos.length === 0) return true;
+    return permitidos.includes(semNum);
+  };
   const [talleres, setTalleres] = useState([]);
   const [inscritos, setInscritos] = useState([]);
   const [inscritosData, setInscritosData] = useState({}); // taller_id → { qr_code, codigo_confirmacion }
@@ -114,6 +123,19 @@ export default function Talleres({ usuario }) {
           visible: true,
           tipo: "error",
           mensaje: "❌ No puedes desinscribirte una vez confirmada tu inscripción.",
+        });
+        return;
+      }
+
+      // Verificar restricción de semestre del taller
+      const tallerObj = talleres.find((t) => t.id === tallerID);
+      if (tallerObj && !semestrePermitido(tallerObj)) {
+        const permitidos = (tallerObj.semestres_permitidos || []);
+        const semestresTexto = permitidos.map((s) => SEMESTRES_ROMANO[s] || s).join(", ");
+        setPopup({
+          visible: true,
+          tipo: "error",
+          mensaje: `❌ Este taller es exclusivo para estudiantes de semestre ${semestresTexto}.`,
         });
         return;
       }
@@ -348,6 +370,9 @@ export default function Talleres({ usuario }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
                 {tallerePorDia[dia].map((taller) => {
                   const inscrito = inscritos.includes(taller.id);
+                  const permitidos = taller.semestres_permitidos || [];
+                  const tieneRestriccion = permitidos.length > 0;
+                  const puedeInscribirse = !tieneRestriccion || permitidos.includes(semNum);
 
                   // Cupos separados por categoría
                   const cuposPrec = taller.cupos_preclinico || 0;
@@ -376,9 +401,11 @@ export default function Talleres({ usuario }) {
                   // El botón está deshabilitado si:
                   // 1. No hay cupos Y no está inscrito
                   // 2. Hay otro taller del mismo día inscrito Y no está inscrito en este
+                  // 3. El semestre del usuario no está permitido
                   const btnDeshabilitado =
                     (cuposDisponibles <= 0 && !inscrito) ||
-                    (otroTallerDelDiaInscrito && !inscrito);
+                    (otroTallerDelDiaInscrito && !inscrito) ||
+                    (!puedeInscribirse && !inscrito);
 
                   return (
                     <div
@@ -389,6 +416,16 @@ export default function Talleres({ usuario }) {
                           : "border-gray-200 bg-white hover:border-teal-300"
                       }`}
                     >
+                      {tieneRestriccion && (
+                        <div className={`mb-3 flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md w-fit ${
+                          puedeInscribirse
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-red-50 text-red-700 border border-red-200"
+                        }`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                          Solo sem. {permitidos.map((s) => SEMESTRES_ROMANO[s] || s).join(", ")}
+                        </div>
+                      )}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h4 className="font-bold text-gray-900 text-base mb-1">
@@ -478,6 +515,8 @@ export default function Talleres({ usuario }) {
                       >
                         {inscrito
                           ? "✓ Inscripción confirmada"
+                          : !puedeInscribirse
+                          ? `Solo sem. ${permitidos.map((s) => SEMESTRES_ROMANO[s] || s).join(", ")}`
                           : cuposDisponibles <= 0
                           ? `Sin cupos (${esClinico ? "clínico" : "preclínico"})`
                           : otroTallerDelDiaInscrito
