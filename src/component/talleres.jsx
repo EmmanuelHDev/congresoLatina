@@ -370,7 +370,11 @@ export default function Talleres({ usuario }) {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-                {tallerePorDia[dia].map((taller) => {
+                {tallerePorDia[dia].filter((taller) => {
+                  const total = (taller.cupos_preclinico || 0) + (taller.cupos_clinico || 0);
+                  const ocupados = taller.inscripciones?.[0]?.count ?? 0;
+                  return (total - ocupados) > 0 || inscritos.includes(taller.id);
+                }).map((taller) => {
                   const inscrito = inscritos.includes(taller.id);
                   const permitidos = taller.semestres_permitidos || [];
                   const tieneRestriccion = permitidos.length > 0;
