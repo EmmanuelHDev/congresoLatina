@@ -41,6 +41,7 @@ export default function Talleres({ usuario }) {
   const [inscritosData, setInscritosData] = useState({}); // taller_id → { qr_code, codigo_confirmacion }
   const [qrViewer, setQrViewer] = useState({ visible: false, qr: "", codigo: "", taller: null });
   const [cargando, setCargando] = useState(true);
+  const [inscribiendo, setInscribiendo] = useState(false);
   const [error, setError] = useState(null);
   const [popup, setPopup] = useState({
     visible: false,
@@ -116,7 +117,9 @@ export default function Talleres({ usuario }) {
 
   // Manejar inscripción
   const handleInscripcion = async (tallerID, inscrito, diaTaller) => {
+    if (inscribiendo) return;
     try {
+      setInscribiendo(true);
       // NO PERMITIR DESINSCRIBIRSE
       if (inscrito && usuario?.id) {
         setPopup({
@@ -258,6 +261,8 @@ export default function Talleres({ usuario }) {
         tipo: "error",
         mensaje: `❌ Error: ${err.message}`,
       });
+    } finally {
+      setInscribiendo(false);
     }
   };
 
@@ -486,10 +491,12 @@ export default function Talleres({ usuario }) {
                         onClick={() =>
                           handleInscripcion(taller.id, inscrito, taller.dia)
                         }
-                        disabled={btnDeshabilitado || inscrito}
+                        disabled={btnDeshabilitado || inscrito || inscribiendo}
                         className={`w-full py-2 px-4 rounded-md font-medium text-sm transition ${
                           inscrito
                             ? "bg-green-600 text-white cursor-not-allowed"
+                            : inscribiendo
+                            ? "bg-teal-300 text-teal-800 cursor-not-allowed"
                             : btnDeshabilitado
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                             : "bg-teal-100 hover:bg-teal-200 text-teal-800"
@@ -497,6 +504,8 @@ export default function Talleres({ usuario }) {
                       >
                         {inscrito
                           ? "✓ Inscripción confirmada"
+                          : inscribiendo
+                          ? "Procesando..."
                           : !puedeInscribirse
                           ? `Solo sem. ${permitidos.map((s) => SEMESTRES_ROMANO[s] || s).join(", ")}`
                           : cuposDisponibles <= 0
