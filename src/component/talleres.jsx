@@ -66,7 +66,7 @@ export default function Talleres({ usuario }) {
 
       const { data, error: err } = await supabase
         .from("talleres")
-        .select("*")
+        .select(`*, inscripciones(count)`)
         .eq("estado", true)
         .order("dia", { ascending: true })
         .order("hora_inicio", { ascending: true });
@@ -155,22 +155,32 @@ export default function Talleres({ usuario }) {
         return;
       }
 
-      // Inscribirse
-      const taller = talleres.find((t) => t.id === tallerID);
-      if (!taller) throw new Error("Taller no encontrado");
+      // ── Leer cupos frescos del taller desde la BD ──
+      const { data: tallerFresh, error: tallerErr } = await supabase
+        .from("talleres")
+        .select("cupos_preclinico, cupos_clinico, dia, nombre, salon, hora_inicio, hora_fin")
+        .eq("id", tallerID)
+        .single();
 
-      // Verificar cupos según la categoría del estudiante
-      const cuposCategoria = esClinico
-        ? (taller.cupos_clinico || 0) - (taller.inscritos_clinico || 0)
-        : (taller.cupos_preclinico || 0) - (taller.inscritos_preclinico || 0);
+      if (tallerErr || !tallerFresh) throw new Error("Taller no encontrado");
 
-      if (cuposCategoria <= 0) {
-        const categoria = esClinico ? "clínico" : "preclínico";
+      // ── Contar inscripciones reales (total, sin distinción de categoría) ──
+      const { count: totalInscritos, error: countErr } = await supabase
+        .from("inscripciones")
+        .select("id", { count: "exact", head: true })
+        .eq("taller_id", tallerID);
+
+      if (countErr) throw countErr;
+
+      const totalCupos = (tallerFresh.cupos_preclinico || 0) + (tallerFresh.cupos_clinico || 0);
+
+      if ((totalInscritos || 0) >= totalCupos) {
         setPopup({
           visible: true,
           tipo: "error",
-          mensaje: `❌ No hay cupos disponibles para ${categoria}`,
+          mensaje: "❌ No hay cupos disponibles para este taller.",
         });
+        cargarTalleres();
         return;
       }
 
@@ -182,7 +192,7 @@ export default function Talleres({ usuario }) {
           {
             usuario_id: usuario?.id || null,
             taller_id: tallerID,
-            dia: taller.dia,
+            dia: tallerFresh.dia,
             codigo_confirmacion: codigoConfirmacion,
             qr_code: null,
             confirmado: false,
@@ -191,14 +201,6 @@ export default function Talleres({ usuario }) {
         ]);
 
       if (err) throw err;
-
-      // Actualizar el contador correcto según la categoría
-      const campoCounter = esClinico ? "inscritos_clinico" : "inscritos_preclinico";
-      const valorActual = esClinico ? (taller.inscritos_clinico || 0) : (taller.inscritos_preclinico || 0);
-      await supabase
-        .from("talleres")
-        .update({ [campoCounter]: valorActual + 1 })
-        .eq("id", tallerID);
 
       if (usuario?.id) {
         setInscritos([...inscritos, tallerID]);
@@ -238,7 +240,7 @@ export default function Talleres({ usuario }) {
           visible: true,
           qr: qrDataUrl,
           codigo: codigoConfirmacion,
-          taller,
+          taller: tallerFresh,
         });
       } else {
         setPopup({
@@ -374,19 +376,10 @@ export default function Talleres({ usuario }) {
                   const tieneRestriccion = permitidos.length > 0;
                   const puedeInscribirse = !tieneRestriccion || permitidos.includes(semNum);
 
-                  // Cupos separados por categoría
-                  const cuposPrec = taller.cupos_preclinico || 0;
-                  const cuposClinic = taller.cupos_clinico || 0;
-                  const inscritosPrec = taller.inscritos_preclinico || 0;
-                  const inscritosClinic = taller.inscritos_clinico || 0;
-                  const dispPrec = cuposPrec - inscritosPrec;
-                  const dispClinic = cuposClinic - inscritosClinic;
-
-                  const totalCupos = cuposPrec + cuposClinic;
-                  const inscritos_total = inscritosPrec + inscritosClinic;
-
-                  // Cupos disponibles para ESTE estudiante según su categoría
-                  const cuposDisponibles = esClinico ? dispClinic : dispPrec;
+                  // Cupos totales y conteo real desde inscripciones
+                  const totalCupos    = (taller.cupos_preclinico || 0) + (taller.cupos_clinico || 0);
+                  const inscritos_total = taller.inscripciones?.[0]?.count ?? 0;
+                  const cuposDisponibles = totalCupos - inscritos_total;
 
                   const porcentajeOcupacion =
                     totalCupos > 0
@@ -456,29 +449,14 @@ export default function Talleres({ usuario }) {
                           <MapPin size={16} className="text-teal-600" />
                           <span>{taller.salon}</span>
                         </div>
-                        {cuposPrec > 0 && (
+                        {totalCupos > 0 && (
                           <div className="flex items-center gap-2">
-                            <Users size={16} className="text-blue-600" />
+                            <Users size={16} className="text-teal-600" />
                             <span>
-                              Preclínico: {inscritosPrec}/{cuposPrec}
-                              {!esClinico && (
-                                <span className={`ml-1 font-medium ${dispPrec > 0 ? "text-green-600" : "text-red-500"}`}>
-                                  · {dispPrec > 0 ? `${dispPrec} disponibles` : "Sin cupos"}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                        )}
-                        {cuposClinic > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Users size={16} className="text-purple-600" />
-                            <span>
-                              Clínico: {inscritosClinic}/{cuposClinic}
-                              {esClinico && (
-                                <span className={`ml-1 font-medium ${dispClinic > 0 ? "text-green-600" : "text-red-500"}`}>
-                                  · {dispClinic > 0 ? `${dispClinic} disponibles` : "Sin cupos"}
-                                </span>
-                              )}
+                              {inscritos_total}/{totalCupos} inscritos
+                              <span className={`ml-1 font-medium ${cuposDisponibles > 0 ? "text-green-600" : "text-red-500"}`}>
+                                · {cuposDisponibles > 0 ? `${cuposDisponibles} disponibles` : "Sin cupos"}
+                              </span>
                             </span>
                           </div>
                         )}
@@ -518,7 +496,7 @@ export default function Talleres({ usuario }) {
                           : !puedeInscribirse
                           ? `Solo sem. ${permitidos.map((s) => SEMESTRES_ROMANO[s] || s).join(", ")}`
                           : cuposDisponibles <= 0
-                          ? `Sin cupos (${esClinico ? "clínico" : "preclínico"})`
+                          ? "Sin cupos disponibles"
                           : otroTallerDelDiaInscrito
                           ? "Ya inscrito en otro"
                           : "Inscribirse"}
