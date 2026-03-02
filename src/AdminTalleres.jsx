@@ -55,10 +55,11 @@ export default function AdminTalleres() {
       .select("usuario_id");
     const inscritos = new Set((inscripciones || []).map(i => i.usuario_id));
 
-    // Traer todos los usuarios y filtrar los que no tienen ninguna inscripción
+    // Traer solo los usuarios con paquete "congreso-decameron" y sin inscripción
     const { data: todos } = await supabase
       .from("usuarios_congreso")
-      .select("id, nombre, apellido, cedula, semestre_actual, universidad")
+      .select("id, nombre, apellido, cedula, semestre_actual, universidad, paquete")
+      .eq("paquete", "congreso-decameron")
       .order("apellido");
 
     setSinTaller((todos || []).filter(u => !inscritos.has(u.id)));
@@ -72,10 +73,13 @@ export default function AdminTalleres() {
     const codigo = Array.from(crypto.getRandomValues(new Uint8Array(6)))
       .map(b => b.toString(36).toUpperCase()).join("");
 
+    const tallerElegido = talleres.find(t => t.id === modalInscribir.tallerSeleccionado);
+
     const { error } = await supabase.from("inscripciones").insert({
       usuario_id:           modalInscribir.usuario.id,
       taller_id:            modalInscribir.tallerSeleccionado,
       codigo_confirmacion:  codigo,
+      dia:                  tallerElegido?.dia ?? Number(modalInscribir.diaSeleccionado),
       confirmado:           true,
       asistencia:           false,
     });
