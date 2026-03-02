@@ -49,20 +49,35 @@ export default function AdminTalleres() {
 
   const cargarSinTaller = async () => {
     setCargandoSinTaller(true);
-    // Traer todos los usuario_id que ya tienen al menos una inscripción
+    // Traer inscripciones con dia para saber cuántos días tiene cubiertos cada usuario
     const { data: inscripciones } = await supabase
       .from("inscripciones")
-      .select("usuario_id");
-    const inscritos = new Set((inscripciones || []).map(i => i.usuario_id));
+      .select("usuario_id, dia");
 
-    // Traer solo los usuarios con paquete "congreso-decameron" y sin inscripción
+    // Mapa userId → Set de días ya inscritos
+    const diasPorUsuario = {};
+    (inscripciones || []).forEach(i => {
+      if (!diasPorUsuario[i.usuario_id]) diasPorUsuario[i.usuario_id] = new Set();
+      if (i.dia) diasPorUsuario[i.usuario_id].add(Number(i.dia));
+    });
+
+    // Usuarios con paquete "congreso-decameron"
     const { data: todos } = await supabase
       .from("usuarios_congreso")
       .select("id, nombre, apellido, cedula, semestre_actual, universidad, paquete")
-      .eq("paquete", "congreso-decameron")
+      .in("paquete", ["congreso-decameron", "solo-congreso"])
       .order("apellido");
 
-    setSinTaller((todos || []).filter(u => !inscritos.has(u.id)));
+    const TODOS_LOS_DIAS = [1, 2, 3];
+    const resultado = (todos || [])
+      .map(u => {
+        const diasInscritos = [...(diasPorUsuario[u.id] || new Set())].sort();
+        const diasFaltantes = TODOS_LOS_DIAS.filter(d => !diasPorUsuario[u.id]?.has(d));
+        return { ...u, diasInscritos, diasFaltantes };
+      })
+      .filter(u => u.diasFaltantes.length > 0);
+
+    setSinTaller(resultado);
     setCargandoSinTaller(false);
   };
 
@@ -457,7 +472,7 @@ export default function AdminTalleres() {
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <CardTitle className="text-amber-800 flex items-center gap-2 flex-1">
                 <Users className="w-5 h-5" />
-                Sin inscripción en talleres
+                Inscripción incompleta en talleres
                 {!cargandoSinTaller && (
                   <span className="text-sm font-normal text-amber-600 ml-1">
                     ({sinTaller.filter(u => {
@@ -480,7 +495,7 @@ export default function AdminTalleres() {
             {cargandoSinTaller ? (
               <p className="p-6 text-gray-400 text-sm">Cargando...</p>
             ) : sinTaller.length === 0 ? (
-              <p className="p-6 text-gray-400 text-sm text-center">¡Todos los participantes tienen al menos un taller inscrito!</p>
+              <p className="p-6 text-gray-400 text-sm text-center">¡Todos los participantes tienen sus 3 talleres inscritos!</p>
             ) : (() => {
               const filtrados = sinTaller.filter(u => {
                 const q = busquedaSinTaller.trim().toLowerCase();
@@ -497,6 +512,7 @@ export default function AdminTalleres() {
                         <TableHead>Cédula</TableHead>
                         <TableHead>Semestre</TableHead>
                         <TableHead>Universidad</TableHead>
+                        <TableHead className="text-center">Días (L M X)</TableHead>
                         <TableHead className="text-center">Acción</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -507,6 +523,23 @@ export default function AdminTalleres() {
                           <TableCell>{u.cedula || "—"}</TableCell>
                           <TableCell>{u.semestre_actual || "—"}</TableCell>
                           <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">{u.universidad || "—"}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex gap-1 justify-center">
+                              {[1, 2, 3].map(d => (
+                                <span
+                                  key={d}
+                                  title={DIAS[d]}
+                                  className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
+                                    u.diasInscritos.includes(d)
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-600"
+                                  }`}
+                                >
+                                  {["L", "M", "X"][d - 1]}
+                                </span>
+                              ))}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center">
                             <Button
                               size="sm"
@@ -836,9 +869,9 @@ export default function AdminTalleres() {
                     className="w-full border px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                   >
                     <option value="">Selecciona un día...</option>
-                    <option value="1">Lunes 2 de Marzo</option>
-                    <option value="2">Martes 3 de Marzo</option>
-                    <option value="3">Miércoles 4 de Marzo</option>
+                    {(modalInscribir.usuario?.diasFaltantes || [1, 2, 3]).map(d => (
+                      <option key={d} value={String(d)}>{DIAS[d]}</option>
+                    ))}
                   </select>
                 </div>
 
