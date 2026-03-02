@@ -5,6 +5,7 @@ import Cuotas from "./component/Cuotas";
 import BotonAdmin from "./component/BotonAdmin";
 import PopupMensaje from "./component/PopupMensaje";
 import Talleres from "./component/talleres";
+import QRCode from "qrcode";
 
 export default function PanelUsuario({ usuario, onLogout }) {
   const navigate = useNavigate(); // ✅ Hook para navegación
@@ -23,6 +24,7 @@ export default function PanelUsuario({ usuario, onLogout }) {
   const [resolvedId, setResolvedId] = useState(usuario?.id || null);
   const [cargando, setCargando] = useState(!usuario?.id);
   const [usuarioFresh, setUsuarioFresh] = useState(usuario); // datos frescos de la BD
+  const [qrEvento, setQrEvento] = useState(null);
 
   // Siempre re-consultar la BD para tener datos actualizados (semestre, etc.)
   useEffect(() => {
@@ -53,6 +55,12 @@ export default function PanelUsuario({ usuario, onLogout }) {
           setCompaneroCuarto(data.companero_cuarto ?? "");
           setNombreCertificado(data.nombre_certificado ?? "");
           setUsuarioFresh({ ...usuario, ...data }); // 👈 datos frescos para Talleres
+
+          // Generar QR del evento con el ID del usuario
+          try {
+            const qr = await QRCode.toDataURL(data.id, { width: 280, margin: 2 });
+            setQrEvento(qr);
+          } catch (_) {}
 
           // Actualizar localStorage con datos completos
           localStorage.setItem(
@@ -222,6 +230,31 @@ export default function PanelUsuario({ usuario, onLogout }) {
           </div>
         </div>
       </div>
+
+      {/* QR de asistencia al evento */}
+      {qrEvento && (
+        <div className="max-w-7xl mx-auto px-6 mb-6">
+          <div className="bg-white rounded-xl shadow-md p-6 flex flex-col sm:flex-row items-center gap-6">
+            <img
+              src={qrEvento}
+              alt="QR de Asistencia"
+              className="w-40 h-40 border-4 border-teal-500 rounded-xl p-1 flex-shrink-0"
+            />
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 mb-1">Mi QR de Asistencia al Evento</h3>
+              <p className="text-sm text-gray-500 mb-3">
+                Presenta este código QR en la entrada de cada día del congreso.<br />
+                El personal lo escaneará para registrar tu entrada y salida.
+              </p>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full font-medium">Lunes 2 de Marzo</span>
+                <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full font-medium">Martes 3 de Marzo</span>
+                <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full font-medium">Miércoles 4 de Marzo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ✅ TALLERES - PASAR PROP usuario */}
       <Talleres usuario={usuarioFresh} />

@@ -491,28 +491,16 @@ export default function Talleres({ usuario }) {
                         onClick={() =>
                           handleInscripcion(taller.id, inscrito, taller.dia)
                         }
-                        disabled={btnDeshabilitado || inscrito || inscribiendo}
+                        disabled={true}
                         className={`w-full py-2 px-4 rounded-md font-medium text-sm transition ${
                           inscrito
                             ? "bg-green-600 text-white cursor-not-allowed"
-                            : inscribiendo
-                            ? "bg-teal-300 text-teal-800 cursor-not-allowed"
-                            : btnDeshabilitado
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            : "bg-teal-100 hover:bg-teal-200 text-teal-800"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
                         }`}
                       >
                         {inscrito
                           ? "✓ Inscripción confirmada"
-                          : inscribiendo
-                          ? "Procesando..."
-                          : !puedeInscribirse
-                          ? `Solo sem. ${permitidos.map((s) => SEMESTRES_ROMANO[s] || s).join(", ")}`
-                          : cuposDisponibles <= 0
-                          ? "Sin cupos disponibles"
-                          : otroTallerDelDiaInscrito
-                          ? "Ya inscrito en otro"
-                          : "Inscribirse"}
+                          : "🔒 Inscripciones cerradas"}
                       </button>
 
                       {/* Botón Ver QR */}

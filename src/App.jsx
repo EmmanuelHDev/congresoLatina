@@ -7,6 +7,8 @@ import PanelUsuario from "./PanelUsuario";
 import AdminInscripciones from "./AdminInscripciones";
 import AdminTalleres from "./AdminTalleres";
 import AdminAsistencia from "./AdminAsistencia";
+import AdminAsistenciaEvento from "./AdminAsistenciaEvento";
+import AdminQRList from "./AdminQRList";
 import ConfirmacionCuenta from "./Confirmacion";
 import Asistencia from "./Asistencia";
 
@@ -136,6 +138,26 @@ export default function App() {
           element={
             <RutaAdmin usuario={usuario}>
               <AdminAsistencia />
+            </RutaAdmin>
+          }
+        />
+
+        {/* ✅ Ruta asistencia evento */}
+        <Route
+          path="/admin/asistencia-evento"
+          element={
+            <RutaAdmin usuario={usuario}>
+              <AdminAsistenciaEvento />
+            </RutaAdmin>
+          }
+        />
+
+        {/* ✅ Ruta lista de QR */}
+        <Route
+          path="/admin/qr"
+          element={
+            <RutaAdmin usuario={usuario}>
+              <AdminQRList />
             </RutaAdmin>
           }
         />

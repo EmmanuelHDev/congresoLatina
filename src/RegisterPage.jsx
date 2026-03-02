@@ -117,7 +117,32 @@ export default function RegisterPage() {
 
       {/* Columna derecha */}
       <div className="w-full md:w-1/2 flex items-center justify-center bg-gray-50">
-        <form
+        <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-lg text-center">
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="text-sm text-teal-700 hover:underline mb-6 flex items-center"
+          >
+            ← Volver al sitio principal
+          </button>
+          <div className="flex justify-center mb-4">
+            <span className="text-6xl">🔒</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            Inscripciones cerradas
+          </h2>
+          <p className="text-gray-500 mb-6">
+            El período de inscripción para el congreso ha finalizado.<br />
+            Si ya te registraste, puedes iniciar sesión con tu cuenta.
+          </p>
+          <button
+            onClick={() => navigate("/login")}
+            className="w-full py-3 bg-teal-800 text-white rounded-lg hover:bg-teal-700 transition font-medium"
+          >
+            Iniciar sesión
+          </button>
+        </div>
+        {false && <form
           onSubmit={handleSubmit}
           className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-lg"
         >
@@ -344,7 +369,7 @@ export default function RegisterPage() {
               Inicia sesión aquí
             </button>
           </p>
-        </form>
+        </form>}
       </div>
 
       {/* 👇 Popup si hay error de doble usuario */}
