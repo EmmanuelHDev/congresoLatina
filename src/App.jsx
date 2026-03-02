@@ -132,13 +132,13 @@ export default function App() {
           }
         />
 
-        {/* ✅ Ruta de asistencia */}
+        {/* ✅ Ruta de asistencia - accesible para admins y administradores de talleres */}
         <Route
           path="/admin/asistencia"
           element={
-            <RutaAdmin usuario={usuario}>
+            <RutaPrivada usuario={usuario}>
               <AdminAsistencia />
-            </RutaAdmin>
+            </RutaPrivada>
           }
         />
 

@@ -25,6 +25,7 @@ export default function PanelUsuario({ usuario, onLogout }) {
   const [cargando, setCargando] = useState(!usuario?.id);
   const [usuarioFresh, setUsuarioFresh] = useState(usuario); // datos frescos de la BD
   const [qrEvento, setQrEvento] = useState(null);
+  const [esTallerAdmin, setEsTallerAdmin] = useState(false);
 
   // Siempre re-consultar la BD para tener datos actualizados (semestre, etc.)
   useEffect(() => {
@@ -61,6 +62,14 @@ export default function PanelUsuario({ usuario, onLogout }) {
             const qr = await QRCode.toDataURL(data.id, { width: 280, margin: 2 });
             setQrEvento(qr);
           } catch (_) {}
+
+          // Verificar si es administrador de talleres
+          const { data: tallerAdmin } = await supabase
+            .from("administradores_talleres")
+            .select("id")
+            .eq("usuario_id", data.id)
+            .maybeSingle();
+          setEsTallerAdmin(!!tallerAdmin);
 
           // Actualizar localStorage con datos completos
           localStorage.setItem(
@@ -223,6 +232,15 @@ export default function PanelUsuario({ usuario, onLogout }) {
             </div>
 
             <div className="flex items-center gap-2 mt-4 md:mt-0">
+              {esTallerAdmin && (
+                <button
+                  onClick={() => navigate("/admin/asistencia")}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="5" x="7" y="7" rx="1"/><rect width="7" height="5" x="10" y="12" rx="1"/></svg>
+                  Escanear Talleres
+                </button>
+              )}
               {usuario?.seleccion_participacion === "Admin" && (
                 <BotonAdmin onClick={handleAdminClick} />
               )}

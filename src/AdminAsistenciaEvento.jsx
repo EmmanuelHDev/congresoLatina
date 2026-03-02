@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/cliente";
 import { Html5Qrcode } from "html5-qrcode";
-import { ArrowLeft, QrCode, Camera, CameraOff, LogIn, LogOut, Users, AlertCircle, XCircle, Download, Lock } from "lucide-react";
+import { ArrowLeft, QrCode, Camera, CameraOff, LogIn, LogOut, Users, AlertCircle, XCircle, Download, Lock, X, ScanLine } from "lucide-react";
 import { Card, CardContent } from "./component/ui/card";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -13,25 +13,35 @@ const DIAS = {
   3: "Miércoles 4 de Marzo",
 };
 
+const POPUP_DURACION = 3500; // ms
+
 export default function AdminAsistenciaEvento() {
   const navigate = useNavigate();
-  const scannerRef = useRef(null);
+  const scannerRef    = useRef(null);
   const ultimoCodigoRef = useRef(null);
   const procesandoRef = useRef(false);
+  const popupTimerRef = useRef(null);
+  const isMounted     = useRef(true);
 
   const [diaSeleccionado, setDiaSeleccionado] = useState(1);
-  const [escaneando, setEscaneando] = useState(false);
-  const [procesando, setProcesando] = useState(false);
+  const [escaneando, setEscaneando]   = useState(false);
+  const [procesando, setProcesando]   = useState(false);
   const [errorCamara, setErrorCamara] = useState(null);
-  const [ultimoResultado, setUltimoResultado] = useState(null);
-  const [historial, setHistorial] = useState([]);
-  const [asistentes, setAsistentes] = useState([]);
+  const [historial, setHistorial]     = useState([]);
+  const [asistentes, setAsistentes]   = useState([]);
   const [cargandoLista, setCargandoLista] = useState(false);
-  const [diasCerrados, setDiasCerrados] = useState([]);
-  const [cerrando, setCerrando] = useState(false);
+  const [diasCerrados, setDiasCerrados]   = useState([]);
+  const [cerrando, setCerrando]           = useState(false);
+  const [popup, setPopup] = useState(null); // { tipo, mensaje, nombre, cedula }
 
+  // Marcar desmontado
   useEffect(() => {
-    return () => { pararCamara(); };
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      pararCamara();
+      if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -39,37 +49,50 @@ export default function AdminAsistenciaEvento() {
     cargarAsistentes();
   }, [diaSeleccionado]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const safe = (fn) => (...args) => { if (isMounted.current) fn(...args); };
+
+  const mostrarPopup = (data) => {
+    if (!isMounted.current) return;
+    if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+    setPopup(data);
+    popupTimerRef.current = setTimeout(() => {
+      if (isMounted.current) setPopup(null);
+    }, POPUP_DURACION);
+  };
+
   const cargarConfig = async () => {
     const { data } = await supabase
       .from("evento_config")
       .select("dias_asistencia_cerrados")
       .eq("id", 1)
       .single();
-    if (data) setDiasCerrados(data.dias_asistencia_cerrados || []);
+    if (data && isMounted.current) setDiasCerrados(data.dias_asistencia_cerrados || []);
   };
 
   const cerrarDia = async () => {
     if (!window.confirm(`¿Confirmas cerrar la asistencia del ${DIAS[diaSeleccionado]}?\nEsta acción bloqueará nuevos registros para ese día.`)) return;
-    setCerrando(true);
+    safe(setCerrando)(true);
     await detenerEscaner();
     const nuevos = [...diasCerrados, diaSeleccionado];
     const { error } = await supabase
       .from("evento_config")
       .update({ dias_asistencia_cerrados: nuevos })
       .eq("id", 1);
-    if (!error) setDiasCerrados(nuevos);
-    setCerrando(false);
+    if (!error) safe(setDiasCerrados)(nuevos);
+    safe(setCerrando)(false);
   };
 
   const cargarAsistentes = async () => {
-    setCargandoLista(true);
+    safe(setCargandoLista)(true);
     const { data } = await supabase
       .from("asistencia_evento")
       .select(`*, usuarios_congreso(nombre, apellido, cedula, semestre_actual)`)
       .eq("dia", diaSeleccionado)
       .order("hora_entrada", { ascending: false });
-    setAsistentes(data || []);
-    setCargandoLista(false);
+    if (isMounted.current) {
+      setAsistentes(data || []);
+      setCargandoLista(false);
+    }
   };
 
   const pararCamara = async () => {
@@ -81,12 +104,10 @@ export default function AdminAsistenciaEvento() {
 
   const iniciarEscaner = () => {
     setErrorCamara(null);
-    setUltimoResultado(null);
     setEscaneando(true);
   };
 
   const exportarExcel = async () => {
-    // Traer todos los registros de los 3 días
     const { data } = await supabase
       .from("asistencia_evento")
       .select(`dia, hora_entrada, hora_salida, usuarios_congreso(nombre, apellido, cedula, semestre_actual, universidad)`)
@@ -99,20 +120,19 @@ export default function AdminAsistenciaEvento() {
     const sheet = workbook.addWorksheet("Asistencia Evento");
 
     sheet.columns = [
-      { header: "Día", key: "dia", width: 20 },
-      { header: "Nombre", key: "nombre", width: 25 },
-      { header: "Apellido", key: "apellido", width: 25 },
-      { header: "Cédula", key: "cedula", width: 15 },
-      { header: "Semestre", key: "semestre", width: 12 },
-      { header: "Universidad", key: "universidad", width: 30 },
+      { header: "Día",          key: "dia",          width: 20 },
+      { header: "Nombre",       key: "nombre",       width: 25 },
+      { header: "Apellido",     key: "apellido",     width: 25 },
+      { header: "Cédula",       key: "cedula",       width: 15 },
+      { header: "Semestre",     key: "semestre",     width: 12 },
+      { header: "Universidad",  key: "universidad",  width: 30 },
       { header: "Hora Entrada", key: "hora_entrada", width: 18 },
-      { header: "Hora Salida", key: "hora_salida", width: 18 },
+      { header: "Hora Salida",  key: "hora_salida",  width: 18 },
     ];
 
-    // Estilo del encabezado
     sheet.getRow(1).eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D4ED8" } };
+      cell.font  = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill  = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D4ED8" } };
       cell.alignment = { horizontal: "center" };
     });
 
@@ -121,14 +141,14 @@ export default function AdminAsistenciaEvento() {
 
     data.forEach((r) => {
       sheet.addRow({
-        dia: DIAS[r.dia] || `Día ${r.dia}`,
-        nombre: r.usuarios_congreso?.nombre || "",
-        apellido: r.usuarios_congreso?.apellido || "",
-        cedula: r.usuarios_congreso?.cedula || "",
-        semestre: r.usuarios_congreso?.semestre_actual || "",
-        universidad: r.usuarios_congreso?.universidad || "",
+        dia:          DIAS[r.dia] || `Día ${r.dia}`,
+        nombre:       r.usuarios_congreso?.nombre       || "",
+        apellido:     r.usuarios_congreso?.apellido     || "",
+        cedula:       r.usuarios_congreso?.cedula       || "",
+        semestre:     r.usuarios_congreso?.semestre_actual || "",
+        universidad:  r.usuarios_congreso?.universidad  || "",
         hora_entrada: formatTs(r.hora_entrada),
-        hora_salida: formatTs(r.hora_salida),
+        hora_salida:  formatTs(r.hora_salida),
       });
     });
 
@@ -147,7 +167,6 @@ export default function AdminAsistenciaEvento() {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
           async (decodedText) => {
-            // El QR puede ser el UUID directo o una URL con ?uid=UUID
             let uid = decodedText.trim();
             try {
               const url = new URL(decodedText);
@@ -158,11 +177,15 @@ export default function AdminAsistenciaEvento() {
             if (uid === ultimoCodigoRef.current || procesandoRef.current) return;
             ultimoCodigoRef.current = uid;
             procesandoRef.current = true;
-            setProcesando(true);
+            if (isMounted.current) setProcesando(true);
 
-            await registrarAsistencia(uid);
+            try {
+              await registrarAsistencia(uid);
+            } catch (e) {
+              if (isMounted.current) mostrarPopup({ tipo: "error", mensaje: e?.message || "Error inesperado." });
+            }
 
-            setProcesando(false);
+            if (isMounted.current) setProcesando(false);
             procesandoRef.current = false;
             setTimeout(() => { ultimoCodigoRef.current = null; }, 3000);
           },
@@ -170,8 +193,8 @@ export default function AdminAsistenciaEvento() {
         );
         if (cancelado) { html5Qrcode.stop().catch(() => {}); return; }
         scannerRef.current = html5Qrcode;
-      } catch (err) {
-        if (!cancelado) {
+      } catch (_) {
+        if (!cancelado && isMounted.current) {
           setErrorCamara("No se pudo acceder a la cámara. Verifica los permisos.");
           setEscaneando(false);
         }
@@ -184,12 +207,13 @@ export default function AdminAsistenciaEvento() {
 
   const detenerEscaner = async () => {
     await pararCamara();
-    setEscaneando(false);
-    setUltimoResultado(null);
+    if (isMounted.current) {
+      setEscaneando(false);
+      setPopup(null);
+    }
   };
 
   const registrarAsistencia = async (uid) => {
-    // 1. Buscar participante
     const { data: usuario, error: userErr } = await supabase
       .from("usuarios_congreso")
       .select("id, nombre, apellido, cedula")
@@ -197,15 +221,13 @@ export default function AdminAsistenciaEvento() {
       .single();
 
     if (userErr || !usuario) {
-      const r = { tipo: "error", mensaje: "Participante no encontrado.", codigo: uid };
-      setUltimoResultado(r);
-      setHistorial(prev => [{ ...r, hora: horaActual() }, ...prev].slice(0, 30));
+      mostrarPopup({ tipo: "error", mensaje: "Participante no encontrado.", codigo: uid });
+      setHistorial(prev => [{ tipo: "error", mensaje: "Participante no encontrado.", hora: horaActual() }, ...prev].slice(0, 30));
       return;
     }
 
     const nombre = `${usuario.nombre} ${usuario.apellido}`;
 
-    // 2. Ver si ya tiene registro para este día
     const { data: registro } = await supabase
       .from("asistencia_evento")
       .select("*")
@@ -214,45 +236,37 @@ export default function AdminAsistenciaEvento() {
       .maybeSingle();
 
     if (!registro) {
-      // Primera vez → registrar entrada
       const { error: insertErr } = await supabase
         .from("asistencia_evento")
         .insert({ usuario_id: uid, dia: diaSeleccionado, hora_entrada: new Date().toISOString() });
 
       if (insertErr) {
-        const r = { tipo: "error", mensaje: insertErr.message || "Error al registrar entrada.", nombre };
-        setUltimoResultado(r);
-        setHistorial(prev => [{ ...r, hora: horaActual() }, ...prev].slice(0, 30));
+        mostrarPopup({ tipo: "error", mensaje: insertErr.message || "Error al registrar entrada.", nombre });
+        setHistorial(prev => [{ tipo: "error", nombre, hora: horaActual() }, ...prev].slice(0, 30));
         return;
       }
 
-      const r = { tipo: "entrada", mensaje: "Entrada registrada", nombre, cedula: usuario.cedula };
-      setUltimoResultado(r);
-      setHistorial(prev => [{ ...r, hora: horaActual() }, ...prev].slice(0, 30));
+      mostrarPopup({ tipo: "entrada", mensaje: "Entrada registrada", nombre, cedula: usuario.cedula });
+      setHistorial(prev => [{ tipo: "entrada", nombre, hora: horaActual() }, ...prev].slice(0, 30));
 
     } else if (!registro.hora_salida) {
-      // Tiene entrada pero no salida → registrar salida
       const { error: updateErr } = await supabase
         .from("asistencia_evento")
         .update({ hora_salida: new Date().toISOString() })
         .eq("id", registro.id);
 
       if (updateErr) {
-        const r = { tipo: "error", mensaje: updateErr.message || "Error al registrar salida.", nombre };
-        setUltimoResultado(r);
-        setHistorial(prev => [{ ...r, hora: horaActual() }, ...prev].slice(0, 30));
+        mostrarPopup({ tipo: "error", mensaje: updateErr.message || "Error al registrar salida.", nombre });
+        setHistorial(prev => [{ tipo: "error", nombre, hora: horaActual() }, ...prev].slice(0, 30));
         return;
       }
 
-      const r = { tipo: "salida", mensaje: "Salida registrada", nombre, cedula: usuario.cedula };
-      setUltimoResultado(r);
-      setHistorial(prev => [{ ...r, hora: horaActual() }, ...prev].slice(0, 30));
+      mostrarPopup({ tipo: "salida", mensaje: "Salida registrada", nombre, cedula: usuario.cedula });
+      setHistorial(prev => [{ tipo: "salida", nombre, hora: horaActual() }, ...prev].slice(0, 30));
 
     } else {
-      // Ya tiene entrada y salida
-      const r = { tipo: "repetido", mensaje: "Entrada y salida ya registradas hoy.", nombre, cedula: usuario.cedula };
-      setUltimoResultado(r);
-      setHistorial(prev => [{ ...r, hora: horaActual() }, ...prev].slice(0, 30));
+      mostrarPopup({ tipo: "repetido", mensaje: "Entrada y salida ya registradas hoy.", nombre, cedula: usuario.cedula });
+      setHistorial(prev => [{ tipo: "repetido", nombre, hora: horaActual() }, ...prev].slice(0, 30));
     }
 
     cargarAsistentes();
@@ -268,33 +282,84 @@ export default function AdminAsistenciaEvento() {
   const totalSalidas  = asistentes.filter(a => a.hora_salida).length;
   const enRecinto     = totalEntradas - totalSalidas;
 
-  const colorResultado = {
-    entrada:  "bg-green-50 border-green-400",
-    salida:   "bg-blue-50 border-blue-400",
-    repetido: "bg-yellow-50 border-yellow-400",
-    error:    "bg-red-50 border-red-400",
+  // Config del popup por tipo
+  const POPUP_CONFIG = {
+    entrada:  { bg: "bg-green-500",  border: "border-green-600",  icono: <LogIn   className="w-16 h-16 text-white" />, texto: "text-green-700" },
+    salida:   { bg: "bg-blue-500",   border: "border-blue-600",   icono: <LogOut  className="w-16 h-16 text-white" />, texto: "text-blue-700"  },
+    repetido: { bg: "bg-yellow-400", border: "border-yellow-500", icono: <AlertCircle className="w-16 h-16 text-white" />, texto: "text-yellow-700" },
+    error:    { bg: "bg-red-500",    border: "border-red-600",    icono: <XCircle className="w-16 h-16 text-white" />, texto: "text-red-700"   },
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
 
+      {/* ── POPUP OVERLAY ── */}
+      {popup && (() => {
+        const cfg = POPUP_CONFIG[popup.tipo] || POPUP_CONFIG.error;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <div className={`relative w-full max-w-sm rounded-3xl shadow-2xl border-4 ${cfg.border} bg-white overflow-hidden`}>
+              {/* Barra de progreso animada */}
+              <div
+                className={`absolute top-0 left-0 h-1.5 ${cfg.bg}`}
+                style={{ animation: `shrink ${POPUP_DURACION}ms linear forwards` }}
+              />
+              <style>{`@keyframes shrink { from { width: 100%; } to { width: 0%; } }`}</style>
+
+              {/* Ícono */}
+              <div className={`${cfg.bg} flex items-center justify-center py-8`}>
+                {cfg.icono}
+              </div>
+
+              {/* Contenido */}
+              <div className="px-6 py-5 text-center">
+                <p className={`text-2xl font-bold mb-1 ${cfg.texto}`}>{popup.mensaje}</p>
+                {popup.nombre && (
+                  <p className="text-lg font-semibold text-gray-800 mt-2">{popup.nombre}</p>
+                )}
+                {popup.cedula && (
+                  <p className="text-sm text-gray-500 mt-0.5">C.I. {popup.cedula}</p>
+                )}
+              </div>
+
+              {/* Botón cerrar */}
+              <button
+                onClick={() => { if (popupTimerRef.current) clearTimeout(popupTimerRef.current); setPopup(null); }}
+                className="absolute top-3 right-3 p-1 rounded-full bg-white/80 hover:bg-white text-gray-500 hover:text-gray-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white py-6 px-6 mb-6">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { detenerEscaner(); navigate("/admin"); }}
+                className="cursor-pointer p-2 rounded-lg hover:bg-white/20 transition"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold">Asistencia al Evento</h1>
+                <p className="text-blue-200 text-sm">Control de entrada y salida por día</p>
+              </div>
+            </div>
             <button
-              onClick={() => { detenerEscaner(); navigate("/admin"); }}
-              className="cursor-pointer p-2 rounded-lg hover:bg-white/20 transition"
+              onClick={() => { detenerEscaner(); navigate("/admin/asistencia"); }}
+              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer"
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ScanLine className="w-4 h-4" />
+              Escanear Talleres
             </button>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold">Asistencia al Evento</h1>
-              <p className="text-blue-200 text-sm">Control de entrada y salida por día</p>
-            </div>
           </div>
 
           {/* Tabs de día */}
@@ -363,7 +428,6 @@ export default function AdminAsistenciaEvento() {
               </div>
               <CardContent className="p-5">
 
-                {/* Banner de día cerrado */}
                 {diasCerrados.includes(diaSeleccionado) ? (
                   <div className="text-center py-8">
                     <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -421,30 +485,6 @@ export default function AdminAsistenciaEvento() {
                 )}
               </CardContent>
             </Card>
-
-            {/* Último resultado */}
-            {ultimoResultado && (
-              <div className={`mt-4 rounded-xl p-5 border-2 ${colorResultado[ultimoResultado.tipo] || colorResultado.error}`}>
-                <div className="flex items-start gap-3">
-                  {ultimoResultado.tipo === "entrada"  ? <LogIn      className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" /> :
-                   ultimoResultado.tipo === "salida"   ? <LogOut     className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" /> :
-                   ultimoResultado.tipo === "repetido" ? <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" /> :
-                                                         <XCircle    className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />}
-                  <div>
-                    <p className={`font-semibold text-base ${
-                      ultimoResultado.tipo === "entrada"  ? "text-green-800"  :
-                      ultimoResultado.tipo === "salida"   ? "text-blue-800"   :
-                      ultimoResultado.tipo === "repetido" ? "text-yellow-800" : "text-red-800"
-                    }`}>
-                      {ultimoResultado.tipo === "entrada" ? "✅ " : ultimoResultado.tipo === "salida" ? "👋 " : ""}
-                      {ultimoResultado.mensaje}
-                    </p>
-                    {ultimoResultado.nombre  && <p className="text-sm text-gray-700 mt-1 font-medium">{ultimoResultado.nombre}</p>}
-                    {ultimoResultado.cedula  && <p className="text-xs text-gray-500">C.I. {ultimoResultado.cedula}</p>}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Historial de sesión */}
             {historial.length > 0 && (
@@ -524,6 +564,13 @@ export default function AdminAsistenciaEvento() {
                             <div className="text-green-500 font-medium">En recinto</div>
                           )}
                         </div>
+                        <button
+                          onClick={() => { detenerEscaner(); navigate("/admin/asistencia"); }}
+                          title="Ir a escáner de talleres"
+                          className="ml-1 p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition cursor-pointer flex-shrink-0"
+                        >
+                          <ScanLine className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>

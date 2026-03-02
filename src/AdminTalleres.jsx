@@ -35,10 +35,61 @@ export default function AdminTalleres() {
   const [guardando, setGuardando] = useState(false);
   const [filtroDia, setFiltroDia] = useState("todos");
   const [filtroNombre, setFiltroNombre] = useState("");
+  const [sinTaller, setSinTaller] = useState([]);
+  const [cargandoSinTaller, setCargandoSinTaller] = useState(false);
+  const [busquedaSinTaller, setBusquedaSinTaller] = useState("");
+  const [modalInscribir, setModalInscribir] = useState({
+    visible: false, usuario: null, diaSeleccionado: "", tallerSeleccionado: "", inscribiendo: false,
+  });
 
   useEffect(() => {
     cargarTalleres();
+    cargarSinTaller();
   }, []);
+
+  const cargarSinTaller = async () => {
+    setCargandoSinTaller(true);
+    // Traer todos los usuario_id que ya tienen al menos una inscripción
+    const { data: inscripciones } = await supabase
+      .from("inscripciones")
+      .select("usuario_id");
+    const inscritos = new Set((inscripciones || []).map(i => i.usuario_id));
+
+    // Traer todos los usuarios y filtrar los que no tienen ninguna inscripción
+    const { data: todos } = await supabase
+      .from("usuarios_congreso")
+      .select("id, nombre, apellido, cedula, semestre_actual, universidad")
+      .order("apellido");
+
+    setSinTaller((todos || []).filter(u => !inscritos.has(u.id)));
+    setCargandoSinTaller(false);
+  };
+
+  const handleInscribirAdmin = async () => {
+    if (!modalInscribir.tallerSeleccionado) return;
+    setModalInscribir(prev => ({ ...prev, inscribiendo: true }));
+
+    const codigo = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+      .map(b => b.toString(36).toUpperCase()).join("");
+
+    const { error } = await supabase.from("inscripciones").insert({
+      usuario_id:           modalInscribir.usuario.id,
+      taller_id:            modalInscribir.tallerSeleccionado,
+      codigo_confirmacion:  codigo,
+      confirmado:           true,
+      asistencia:           false,
+    });
+
+    if (error) {
+      alert("Error al inscribir: " + error.message);
+      setModalInscribir(prev => ({ ...prev, inscribiendo: false }));
+      return;
+    }
+
+    setModalInscribir({ visible: false, usuario: null, diaSeleccionado: "", tallerSeleccionado: "", inscribiendo: false });
+    cargarSinTaller();
+    cargarTalleres();
+  };
 
   const cargarTalleres = async () => {
     setLoading(true);
@@ -395,6 +446,83 @@ export default function AdminTalleres() {
         </Card>
       </div>
 
+      {/* ── Sección: participantes sin taller ── */}
+      <div className="px-6 pb-6 mt-6">
+        <Card className="shadow-lg border-0">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <CardTitle className="text-amber-800 flex items-center gap-2 flex-1">
+                <Users className="w-5 h-5" />
+                Sin inscripción en talleres
+                {!cargandoSinTaller && (
+                  <span className="text-sm font-normal text-amber-600 ml-1">
+                    ({sinTaller.filter(u => {
+                      const q = busquedaSinTaller.trim().toLowerCase();
+                      return !q || `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) || (u.cedula || "").includes(q);
+                    }).length})
+                  </span>
+                )}
+              </CardTitle>
+              <input
+                type="text"
+                placeholder="Buscar participante..."
+                value={busquedaSinTaller}
+                onChange={e => setBusquedaSinTaller(e.target.value)}
+                className="text-sm border border-amber-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 w-56"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {cargandoSinTaller ? (
+              <p className="p-6 text-gray-400 text-sm">Cargando...</p>
+            ) : sinTaller.length === 0 ? (
+              <p className="p-6 text-gray-400 text-sm text-center">¡Todos los participantes tienen al menos un taller inscrito!</p>
+            ) : (() => {
+              const filtrados = sinTaller.filter(u => {
+                const q = busquedaSinTaller.trim().toLowerCase();
+                return !q || `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) || (u.cedula || "").includes(q);
+              });
+              return filtrados.length === 0 ? (
+                <p className="p-6 text-gray-400 text-sm text-center">Sin resultados.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50/50">
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Cédula</TableHead>
+                        <TableHead>Semestre</TableHead>
+                        <TableHead>Universidad</TableHead>
+                        <TableHead className="text-center">Acción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtrados.map(u => (
+                        <TableRow key={u.id} className="hover:bg-amber-50/40">
+                          <TableCell className="font-medium">{u.nombre} {u.apellido}</TableCell>
+                          <TableCell>{u.cedula || "—"}</TableCell>
+                          <TableCell>{u.semestre_actual || "—"}</TableCell>
+                          <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">{u.universidad || "—"}</TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              size="sm"
+                              className="bg-amber-500 hover:bg-amber-600 text-white cursor-pointer text-xs"
+                              onClick={() => setModalInscribir({ visible: true, usuario: u, diaSeleccionado: "", tallerSeleccionado: "", inscribiendo: false })}
+                            >
+                              Inscribir en taller
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Modal Crear/Editar */}
       {modalForm.visible && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -673,6 +801,102 @@ export default function AdminTalleres() {
           </div>
         </div>
       )}
+
+      {/* Modal Inscribir (admin) */}
+      {modalInscribir.visible && (() => {
+        const talleresDia = talleres.filter(t => String(t.dia) === String(modalInscribir.diaSeleccionado));
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+              <div className="flex items-center justify-between p-6 border-b">
+                <div>
+                  <h2 className="text-xl font-bold text-amber-700">Inscribir en taller</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {modalInscribir.usuario?.nombre} {modalInscribir.usuario?.apellido}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setModalInscribir({ visible: false, usuario: null, diaSeleccionado: "", tallerSeleccionado: "", inscribiendo: false })}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Día del taller</label>
+                  <select
+                    value={modalInscribir.diaSeleccionado}
+                    onChange={e => setModalInscribir(prev => ({ ...prev, diaSeleccionado: e.target.value, tallerSeleccionado: "" }))}
+                    className="w-full border px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  >
+                    <option value="">Selecciona un día...</option>
+                    <option value="1">Lunes 2 de Marzo</option>
+                    <option value="2">Martes 3 de Marzo</option>
+                    <option value="3">Miércoles 4 de Marzo</option>
+                  </select>
+                </div>
+
+                {modalInscribir.diaSeleccionado && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Taller</label>
+                    {talleresDia.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic">No hay talleres en ese día.</p>
+                    ) : (
+                      <select
+                        value={modalInscribir.tallerSeleccionado}
+                        onChange={e => setModalInscribir(prev => ({ ...prev, tallerSeleccionado: e.target.value }))}
+                        className="w-full border px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      >
+                        <option value="">Selecciona un taller...</option>
+                        {talleresDia.map(t => {
+                          const inscritos = t.inscripciones?.[0]?.count ?? 0;
+                          const cupos = (t.cupos_preclinico || 0) + (t.cupos_clinico || 0);
+                          const lleno = inscritos >= cupos;
+                          return (
+                            <option key={t.id} value={t.id}>
+                              {t.nombre} — {t.hora_inicio} ({inscritos}/{cupos} cupos){lleno ? " ⚠️ lleno" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    )}
+                  </div>
+                )}
+
+                {modalInscribir.tallerSeleccionado && (() => {
+                  const t = talleres.find(x => x.id === modalInscribir.tallerSeleccionado);
+                  const inscritos = t?.inscripciones?.[0]?.count ?? 0;
+                  const cupos = (t?.cupos_preclinico || 0) + (t?.cupos_clinico || 0);
+                  return inscritos >= cupos ? (
+                    <p className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                      ⚠️ Este taller está lleno. Como admin puedes inscribir igual.
+                    </p>
+                  ) : null;
+                })()}
+              </div>
+
+              <div className="flex justify-end gap-2 px-6 pb-6">
+                <Button
+                  variant="outline"
+                  onClick={() => setModalInscribir({ visible: false, usuario: null, diaSeleccionado: "", tallerSeleccionado: "", inscribiendo: false })}
+                  className="cursor-pointer"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleInscribirAdmin}
+                  disabled={!modalInscribir.tallerSeleccionado || modalInscribir.inscribiendo}
+                  className="bg-amber-500 hover:bg-amber-600 text-white cursor-pointer disabled:opacity-60"
+                >
+                  {modalInscribir.inscribiendo ? "Inscribiendo..." : "Confirmar inscripción"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal Eliminar */}
       {modalEliminar.visible && (
